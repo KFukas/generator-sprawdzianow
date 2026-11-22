@@ -58,9 +58,11 @@ function simplify(data) {
   return { paragraphs };
 }
 
-async function recognize(imageBuffer) {
+/** opts.sparse – tryb „rozproszony tekst” (PSM 11): pojedyncze napisy na rysunku zamiast akapitów. */
+async function recognize(imageBuffer, opts = {}) {
   await init();
-  const res = await scheduler.addJob("recognize", Buffer.from(imageBuffer), {}, { blocks: true, text: false });
+  const psm = opts && opts.sparse ? "11" : "3";
+  const res = await scheduler.addJob("recognize", Buffer.from(imageBuffer), { tessedit_pageseg_mode: psm }, { blocks: true, text: false });
   return simplify(res.data);
 }
 

@@ -41,7 +41,7 @@ contextBridge.exposeInMainWorld("api", {
   onTask: listen("test:task"),
   onProgress: listen("test:progress"),
   // OCR wycinka (kontrola, czy na grafice nie ma podpisu)
-  ocr: (imageBuffer) => ipcRenderer.invoke("ocr:recognize", imageBuffer),
+  ocr: (imageBuffer, opts) => ipcRenderer.invoke("ocr:recognize", imageBuffer, opts),
   // pliki
   pickFolder: (max) => ipcRenderer.invoke("images:pickFolder", { max }),
   pickFiles: (max) => ipcRenderer.invoke("images:pickFiles", { max }),

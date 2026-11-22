@@ -147,10 +147,61 @@ function cropCanvas(img, box) {
   return c;
 }
 
-async function cropFigure(page, box) {
+async function cropFigure(page, box, masks) {
   const img = await loadImage(page.url);
-  return cropCanvas(img, box).toDataURL("image/jpeg", 0.92);
+  const c = cropCanvas(img, box);
+  if (Array.isArray(masks) && masks.length) {
+    const ctx = c.getContext("2d");
+    ctx.lineWidth = Math.max(1, Math.round(c.width / 400));
+    for (const m of masks) {
+      const x = m.x0 - box.x0, y = m.y0 - box.y0, w = m.x1 - m.x0, h = m.y1 - m.y0;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = "#9ca3af";
+      ctx.strokeRect(x, y, w, h);
+    }
+  }
+  return c.toDataURL("image/jpeg", 0.92);
 }
+
+/**
+ * Binaryzacja lokalna: piksel jest czarny, gdy wyraźnie różni się od średniej jasności swojego otoczenia.
+ * Dzięki temu napisy jasne na ciemnym i ciemne na jasnym tle wychodzą jako czarny tekst na białym – czytelny dla OCR.
+ */
+function localBinarize(src) {
+  const w = src.width, h = src.height;
+  const px = src.getContext("2d").getImageData(0, 0, w, h).data;
+  const gray = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) gray[i] = 0.3 * px[i * 4] + 0.59 * px[i * 4 + 1] + 0.11 * px[i * 4 + 2];
+  const W1 = w + 1, S = new Float64Array(W1 * (h + 1)); // obraz całkowy
+  for (let y = 0; y < h; y++) {
+    let row = 0;
+    for (let x = 0; x < w; x++) {
+      row += gray[y * w + x];
+      S[(y + 1) * W1 + x + 1] = S[y * W1 + x + 1] + row;
+    }
+  }
+  const R = Math.max(8, Math.round(Math.min(w, h) / 25));
+  const out = document.createElement("canvas");
+  out.width = w;
+  out.height = h;
+  const octx = out.getContext("2d");
+  const od = octx.createImageData(w, h);
+  for (let y = 0; y < h; y++) {
+    const ya = Math.max(0, y - R), yb = Math.min(h, y + R + 1);
+    for (let x = 0; x < w; x++) {
+      const xa = Math.max(0, x - R), xb = Math.min(w, x + R + 1);
+      const mean = (S[yb * W1 + xb] - S[ya * W1 + xb] - S[yb * W1 + xa] + S[ya * W1 + xa]) / ((xb - xa) * (yb - ya));
+      const v = Math.abs(gray[y * w + x] - mean) > 45 ? 0 : 255, i = (y * w + x) * 4;
+      od.data[i] = od.data[i + 1] = od.data[i + 2] = v;
+      od.data[i + 3] = 255;
+    }
+  }
+  octx.putImageData(od, 0, 0);
+  return out;
+}
+
+const labelKey = (s) => String(s || "").toLowerCase().replace(/[^a-ząćęłńóśźż0-9]+/gi, "");
 
 /**
  * Wycina ilustrację wskazaną przez model i usuwa z brzegów wycinka napisy (podpis, opis obok),
@@ -166,25 +217,33 @@ async function figureFromAnalysis(page, fig) {
     x1: Math.min(W, (fig.box.x1 / 1000) * W + pad),
     y1: Math.min(H, (fig.box.y1 / 1000) * H + pad),
   };
+  const masks = [];
   try {
-    const c = cropCanvas(img, box);
+    // OCR sprawdza obszar nieco większy niż wycinek (w pionie): podpis ucięty w połowie przez ramkę
+    // byłby nieczytelny dla OCR, a jego górne połówki liter zostałyby na obrazku.
+    const ext = Math.round(H * 0.04);
+    const scan = { x0: box.x0, x1: box.x1, y0: Math.max(0, box.y0 - ext), y1: Math.min(H, box.y1 + ext) };
+    const off = box.y0 - scan.y0; // przesunięcie: współrzędne skanu → współrzędne wycinka
+    const c = cropCanvas(img, scan);
     const blob = await new Promise((r) => c.toBlob(r, "image/png"));
     const res = await window.api.ocr(await blob.arrayBuffer());
     if (res.ok) {
-      const cw = c.width, ch = c.height;
+      const cw = c.width, ch = Math.round(box.y1 - box.y0);
       const lines = res.data.paragraphs.flatMap((p) => p.lines).filter((l) => l.conf >= 55 && /[a-ząćęłńóśźż]{3,}/i.test(l.text));
       let { x0, y0, x1, y1 } = { x0: 0, y0: 0, x1: cw, y1: ch };
       for (const l of lines) {
-        const [, ly0, , ly1] = l.bbox;
+        const ly0 = l.bbox[1] - off, ly1 = l.bbox[3] - off; // w układzie wycinka
+        if (ly1 <= 0 || ly0 >= ch) continue; // linia całkiem poza wycinkiem
         const cy = (ly0 + ly1) / 2;
-        if (cy > ch * 0.62) y1 = Math.min(y1, ly0 - 4); // podpis pod obrazkiem
-        else if (cy < ch * 0.25) y0 = Math.max(y0, ly1 + 4); // tekst nad obrazkiem
+        if (cy > ch * 0.62) y1 = Math.min(y1, ly0 - 6); // podpis pod obrazkiem (także częściowo ucięty)
+        else if (cy < ch * 0.25) y0 = Math.max(y0, ly1 + 6); // tekst nad obrazkiem
       }
       // urywki tekstu przy bokach (sąsiednia kolumna, opis obok). Tesseract „widzi” też litery w fakturze zdjęć,
       // więc boki przycinamy tylko, gdy jest tam kolumna tekstu: ≥3 pewne słowa w różnych wierszach.
       const words = res.data.paragraphs
         .flatMap((p) => p.lines.flatMap((l) => l.words))
         .filter((w) => w.c >= 55 && /[a-ząćęłńóśźż]{2,}/i.test(w.t))
+        .map((w) => ({ ...w, b: [w.b[0], w.b[1] - off, w.b[2], w.b[3] - off] }))
         .filter((w) => (w.b[1] + w.b[3]) / 2 > y0 && (w.b[1] + w.b[3]) / 2 < y1);
       const column = (ws) => new Set(ws.map((w) => Math.round(w.b[1] / Math.max(8, w.b[3] - w.b[1])))).size >= 3;
       const leftWords = words.filter((w) => (w.b[0] + w.b[2]) / 2 < cw * 0.3);
@@ -192,11 +251,38 @@ async function figureFromAnalysis(page, fig) {
       if (column(leftWords)) x0 = Math.min(cw * 0.35, Math.max(x0, ...leftWords.map((w) => w.b[2] + 4)));
       if (column(rightWords)) x1 = Math.max(cw * 0.65, Math.min(x1, ...rightWords.map((w) => w.b[0] - 4)));
       if (y1 - y0 >= ch * 0.4 && x1 - x0 >= cw * 0.4) box = { x0: box.x0 + x0, y0: box.y0 + y0, x1: box.x0 + x1, y1: box.y0 + y1 };
+      // napisy NA rysunku (etykiety wskazane przez AI) zasłaniamy białym polem – nie zdradzą odpowiedzi
+      const labels = (fig.labels || []).map(labelKey).filter((k) => k.length >= 3);
+      if (labels.length) {
+        const pad = Math.round(Math.max(W, H) * 0.003);
+        const found = new Set();
+        const collect = (data) => {
+          for (const l of data.paragraphs.flatMap((p) => p.lines)) {
+            const key = labelKey(l.text);
+            const hit = key.length >= 3 && l.conf >= 40 ? labels.find((k) => key.includes(k) || k.includes(key)) : null;
+            if (!hit) continue;
+            const m = { x0: scan.x0 + l.bbox[0] - pad, y0: scan.y0 + l.bbox[1] - pad, x1: scan.x0 + l.bbox[2] + pad, y1: scan.y0 + l.bbox[3] + pad };
+            const cx = (m.x0 + m.x1) / 2, cy = (m.y0 + m.y1) / 2;
+            if (cx > box.x0 && cx < box.x1 && cy > box.y0 && cy < box.y1 && !masks.some((o) => Math.abs(o.x0 - m.x0) < 6 && Math.abs(o.y0 - m.y0) < 6)) {
+              masks.push(m);
+              found.add(hit);
+            }
+          }
+        };
+        collect(res.data);
+        // napisy na kolorowym tle (np. biały tekst na brązowej glebie) – drugi przebieg po binaryzacji lokalnej
+        if (labels.some((k) => !found.has(k))) {
+          const bin = localBinarize(c);
+          const bblob = await new Promise((r) => bin.toBlob(r, "image/png"));
+          const res2 = await window.api.ocr(await bblob.arrayBuffer(), { sparse: true });
+          if (res2.ok) collect(res2.data);
+        }
+      }
     }
   } catch (e) {
     console.warn("OCR wycinka", e);
   }
-  return { id: newId("f"), pageId: page.id, box, description: fig.shows || fig.caption || "", scale: 1, cropUrl: await cropFigure(page, box) };
+  return { id: newId("f"), pageId: page.id, box, masks, description: fig.shows || fig.caption || "", scale: 1, cropUrl: await cropFigure(page, box, masks) };
 }
 
 // ================== biblioteka stron (czytanie przez model w tle) ==================
@@ -892,7 +978,7 @@ async function generate() {
     };
     unsubs.push(window.api.onTask(({ task, index }) => accept(task, index)));
     unsubs.push(window.api.onProgress(() => updateGenBanner(plan.length)));
-    const res = await window.api.generate({ pages: material, figures: figures.map((f) => ({ caption: f.caption, shows: f.shows })), plan, settings: s, avoid: [] });
+    const res = await window.api.generate({ pages: material, figures: figures.map((f) => ({ caption: f.caption, shows: f.shows, labels: f.labels || [] })), plan, settings: s, avoid: [] });
     // odpowiedź może dojść przed komunikatami z pojedynczymi zadaniami – bierzemy też zadania z wyniku
     if (res.ok) (res.tasks || []).forEach((t, i) => accept(t, i));
     await Promise.all(pending);
@@ -962,7 +1048,7 @@ async function swapQuestion(qi) {
   try {
     const res = await window.api.generate({
       pages: material,
-      figures: figures.map((f) => ({ caption: f.caption, shows: f.shows })),
+      figures: figures.map((f) => ({ caption: f.caption, shows: f.shows, labels: f.labels || [] })),
       plan,
       settings: state.settings,
       avoid: state.test.questions.map((q) => q.question).slice(0, 20),

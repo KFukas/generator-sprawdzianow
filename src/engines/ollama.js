@@ -175,8 +175,9 @@ const PAGE_SCHEMA = {
           bbox_2d: { type: "array", items: { type: "integer" } },
           caption: { type: "string" },
           shows: { type: "string" },
+          labels: { type: "array", items: { type: "string" } },
         },
-        required: ["bbox_2d", "caption", "shows"],
+        required: ["bbox_2d", "caption", "shows", "labels"],
       },
     },
   },
@@ -189,7 +190,8 @@ const PAGE_PROMPT = `To jest zdjęcie strony (lub rozkładówki) z polskiego pod
 3. W polu "figures" wypisz ilustracje (fotografie, rysunki, schematy) – maksymalnie 6, bez ikonek i ozdobników. Dla każdej:
    - bbox_2d: [x1, y1, x2, y2] we współrzędnych 0–1000 względem całego zdjęcia. Ramka ma obejmować SAM obrazek, BEZ podpisu i bez tekstu obok,
    - caption: podpis lub opis wydrukowany przy ilustracji (pusty, jeśli brak),
-   - shows: krótko, co przedstawia ilustracja.
+   - shows: krótko, co przedstawia ilustracja,
+   - labels: napisy umieszczone NA ilustracji (etykiety), pusta lista, jeśli brak.
 Odpowiedz w JSON.`;
 
 async function readPage({ imageB64, signal, onProgress }) {

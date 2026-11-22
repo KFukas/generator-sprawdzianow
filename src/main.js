@@ -486,9 +486,9 @@ ipcMain.handle("test:cancel", () => {
   return true;
 });
 
-ipcMain.handle("ocr:recognize", async (_e, imageBuffer) => {
+ipcMain.handle("ocr:recognize", async (_e, imageBuffer, opts) => {
   try {
-    return { ok: true, data: await ocr.recognize(imageBuffer) };
+    return { ok: true, data: await ocr.recognize(imageBuffer, opts) };
   } catch (err) {
     console.error(err);
     return { ok: false, error: "Nie udało się rozpoznać tekstu: " + (err && err.message ? err.message : String(err)) };

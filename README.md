@@ -3,13 +3,57 @@
 Aplikacja dla rodziców i nauczycieli. Robisz telefonem zdjęcia stron podręcznika, a program układa z nich **kartkówkę lub sprawdzian** z kluczem odpowiedzi.
 
 - **Rodzaje zadań:** otwarte, zamknięte ABC, prawda/fałsz, dopasowania i luki w zdaniach, w dowolnym miksie.
-- **Grafiki ze stron:** ilustracje z podręcznika trafiają do zadań bez podpisów, żeby nie zdradzały odpowiedzi.
+- **Grafiki ze stron:** ilustracje z podręcznika trafiają do zadań bez podpisów, a napisy na rysunkach, które zdradzałyby odpowiedź, są zasłaniane.
+- **Rozwiązywanie na komputerze:** dziecko zaznacza odpowiedzi w programie, zadania zamknięte są sprawdzane automatycznie, a rodzic ocenia pytania otwarte.
 - **Klucz odpowiedzi chroniony hasłem rodzica:** dziecko nie podejrzy rozwiązań.
 - **Podsumowanie na końcu sprawdzianu:** tabela punktów, skala ocen i miejsce na podpis rodzica.
 - **Poprawki:** każde zadanie można edytować albo podmienić na nowe.
 - **Druk i PDF:** sprawdzian i klucz drukują się osobno.
 
 Program działa w systemie Windows, a cały interfejs jest po polsku.
+
+## Zrzuty ekranu
+
+> Strony podręcznika na zrzutach to przykładowe, samodzielnie przygotowane materiały. Zadania ułożył silnik Claude Sonnet.
+
+**Gotowa kartkówka – zadanie z ilustracją ze strony (napisy „łodyga” i „korzeń” zasłonięte, żeby nie zdradzały odpowiedzi)**
+
+![Kartkówka z zadaniem ABC i ilustracją](docs/screenshots/01-sprawdzian.png)
+
+<details>
+<summary><b>Więcej zrzutów: zadania, materiał, ustawienia, rozwiązywanie, klucz</b></summary>
+
+**Prawda/fałsz, dopasowania i luki**
+
+![Zadania prawda/fałsz i dopasowanie](docs/screenshots/01c-prawda-falsz-dopasowanie.png)
+
+**Materiał – zdjęcia stron podręcznika, odczytane przez AI**
+
+![Okno Materiał](docs/screenshots/02-material.png)
+
+**Ustawienia – poziom trudności, liczba i rodzaje zadań**
+
+![Okno Ustawienia](docs/screenshots/03-ustawienia.png)
+
+**Rozwiązywanie na komputerze**
+
+![Tryb Rozwiąż](docs/screenshots/04-rozwiaz.png)
+
+**Wynik i ocena**
+
+![Wynik rozwiązywania](docs/screenshots/04b-wynik.png)
+
+**Klucz odpowiedzi chroniony hasłem rodzica**
+
+![Hasło rodzica](docs/screenshots/05a-haslo-rodzica.png)
+
+![Klucz odpowiedzi](docs/screenshots/05-klucz.png)
+
+**Wybór silnika AI**
+
+![Okno Silnik AI](docs/screenshots/06-silnik-ai.png)
+
+</details>
 
 ## Instalacja
 

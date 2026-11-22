@@ -92,8 +92,8 @@ const PAGE_SCHEMA = {
       type: "array",
       items: {
         type: "object",
-        properties: { x1: { type: "integer" }, y1: { type: "integer" }, x2: { type: "integer" }, y2: { type: "integer" }, caption: { type: "string" }, shows: { type: "string" } },
-        required: ["x1", "y1", "x2", "y2", "caption", "shows"],
+        properties: { x1: { type: "integer" }, y1: { type: "integer" }, x2: { type: "integer" }, y2: { type: "integer" }, caption: { type: "string" }, shows: { type: "string" }, labels: { type: "array", items: { type: "string" } } },
+        required: ["x1", "y1", "x2", "y2", "caption", "shows", "labels"],
       },
     },
   },
@@ -103,7 +103,7 @@ const PAGE_SCHEMA = {
 const pagePrompt = `To zdjęcie strony (lub rozkładówki) polskiego podręcznika szkolnego.
 1. "title": tytuł lekcji widoczny na stronie.
 2. "text": przepisz dokładnie tekst podręcznika: akapity, śródtytuły, ramki, opisy przy rysunkach, polecenia. Pomiń numery stron i teksty z sąsiednich stron na brzegach zdjęcia.
-3. "figures": ilustracje (zdjęcia, rysunki, schematy, mapy; bez ikonek). Dla każdej prostokąt x1, y1, x2, y2 we współrzędnych 0–1000 względem całego zdjęcia (0,0 = lewy górny róg), obejmujący SAM obrazek – bez podpisu i bez tekstu obok; "caption" – podpis przy ilustracji; "shows" – co przedstawia (krótko).
+3. "figures": ilustracje (zdjęcia, rysunki, schematy, mapy; bez ikonek). Dla każdej prostokąt x1, y1, x2, y2 we współrzędnych 0–1000 względem całego zdjęcia (0,0 = lewy górny róg), obejmujący SAM obrazek – bez podpisu i bez tekstu obok; "caption" – podpis przy ilustracji; "shows" – co przedstawia (krótko); "labels" – wszystkie napisy umieszczone NA ilustracji (etykiety, strzałki z opisami), dokładnie jak na obrazku; pusta lista, jeśli brak.
 Odpowiedz w JSON.`;
 
 function makeEngine(getKey) {

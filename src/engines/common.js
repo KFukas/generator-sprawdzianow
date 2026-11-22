@@ -25,7 +25,7 @@ function normalizeFigures(figs, scaleX = 1, scaleY = 1) {
       const raw = Array.isArray(f.bbox_2d) ? f.bbox_2d : [f.x1, f.y1, f.x2, f.y2];
       if (raw.length !== 4 || raw.some((v) => !Number.isFinite(+v))) return null;
       const [a, b, c, d] = raw.map((v, i) => Math.max(0, Math.min(1000, Math.round(+v * (i % 2 ? scaleY : scaleX)))));
-      return { box: { x0: Math.min(a, c), y0: Math.min(b, d), x1: Math.max(a, c), y1: Math.max(b, d) }, caption: String(f.caption || "").trim(), shows: String(f.shows || "").trim() };
+      return { box: { x0: Math.min(a, c), y0: Math.min(b, d), x1: Math.max(a, c), y1: Math.max(b, d) }, caption: String(f.caption || "").trim(), shows: String(f.shows || "").trim(), labels: (Array.isArray(f.labels) ? f.labels : []).map((x) => String(x).trim()).filter(Boolean).slice(0, 12) };
     })
     .filter((f) => f && f.box.x1 - f.box.x0 >= 30 && f.box.y1 - f.box.y0 >= 30);
 }
@@ -70,7 +70,7 @@ function buildTestPrompt({ pages, figures, plan, settings, avoid }) {
   const kind = settings.kind === "sprawdzian" ? "sprawdzian" : "kartkówkę";
   const material = pages.map((p, i) => `--- STRONA ${i + 1}${p.title ? ` (${p.title})` : ""} ---\n${p.text}`).join("\n\n");
   const figs = figures.length
-    ? figures.map((f, i) => `[${i}] ${f.shows || "ilustracja"}${f.caption ? ` (podpis w podręczniku: „${f.caption}”)` : ""}`).join("\n")
+    ? figures.map((f, i) => `[${i}] ${f.shows || "ilustracja"}${f.caption ? ` (podpis w podręczniku: „${f.caption}”)` : ""}${f.labels && f.labels.length ? ` – napisy widoczne na obrazku: ${f.labels.map((l) => `„${l}”`).join(", ")}` : ""}`).join("\n")
     : "(brak)";
   const planText = plan.map((p, i) => `${i + 1}. ${p.type}${p.figure ? " – dotyczy ilustracji (wybierz numer w polu figure)" : ""}`).join("\n");
   const used = new Set(plan.map((p) => p.type));
@@ -81,7 +81,7 @@ ZASADY:
 - Zadania dotyczą WYŁĄCZNIE materiału poniżej. Uczeń nie ma podręcznika – nie pisz „w tekście”, „na stronie”.
 - Każde zadanie sprawdza inną informację. Nie powtarzaj pytań.
 - Fragmenty tekstu, które wyglądają na błędnie odczytane lub bez sensu, pomiń.
-- Pole "figure": numer ilustracji z listy albo -1, jeśli zadanie nie dotyczy ilustracji. Uczeń zobaczy SAM obrazek, bez podpisu – pytanie może więc dotyczyć tego, co przedstawia.
+- Pole "figure": numer ilustracji z listy albo -1, jeśli zadanie nie dotyczy ilustracji. Uczeń zobaczy SAM obrazek, bez podpisu – pytanie może więc dotyczyć tego, co przedstawia. Odpowiedź NIE może dać się przeczytać z napisów widocznych na obrazku (lista przy ilustracji) – np. nie pytaj „która część rośliny jest w glebie”, jeśli na obrazku jest napis „korzeń”; zapytaj wtedy o funkcję, zależność albo coś, czego na obrazku nie napisano.
 - "points": 1 za proste zadanie, 2–3 za trudniejsze; dla tf, match, gap – 2.
 ${settings.extra ? `- Skup się zwłaszcza na: ${settings.extra}.\n` : ""}${avoid && avoid.length ? `- NIE powtarzaj tych pytań: ${avoid.map((a) => `„${a}”`).join("; ")}.\n` : ""}
 RODZAJE ZADAŃ:
