@@ -1,0 +1,40 @@
+{
+  "name": "generator-sprawdzianow",
+  "version": "1.0.0",
+  "description": "Generator sprawdzianów i kartkówek ze zdjęć stron podręcznika – zadania otwarte, ABC, prawda/fałsz, dopasowania i luki, z kluczem odpowiedzi chronionym hasłem.",
+  "main": "src/main.js",
+  "license": "GPL-3.0-only",
+  "author": "Generator sprawdzianów – contributors",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --x64"
+  },
+  "type": "commonjs",
+  "devDependencies": {
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0"
+  },
+  "productName": "Generator sprawdzianów",
+  "private": true,
+  "dependencies": {
+    "@tesseract.js-data/pol": "^1.0.0",
+    "tesseract.js": "^7.0.0"
+  },
+  "build": {
+    "appId": "pl.generator-sprawdzianow.app",
+    "productName": "Generator sprawdzianów",
+    "artifactName": "Generator-sprawdzianow-Setup-${version}.${ext}",
+    "asar": false,
+    "files": ["src/**/*", "package.json", "LICENSE"],
+    "directories": { "output": "dist" },
+    "win": { "target": ["nsis"] },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Generator sprawdzianów",
+      "license": "LICENSE"
+    }
+  }
+}

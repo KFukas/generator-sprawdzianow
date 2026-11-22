@@ -1,0 +1,24 @@
+# zależności i wyniki budowania
+node_modules/
+dist/
+
+# dane użytkownika – nigdy do repozytorium
+*.sprawdzian.json
+config.json
+library/
+
+# klucze i sekrety
+.env
+.env.*
+*.key
+*.pem
+*.pfx
+*.p12
+secrets*
+credentials*
+.npmrc
+
+# pliki systemowe i logi
+*.log
+.DS_Store
+Thumbs.db
