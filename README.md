@@ -7,6 +7,9 @@ Aplikacja dla rodziców i nauczycieli. Robisz telefonem zdjęcia stron podręczn
 - **Rozwiązywanie na komputerze:** dziecko zaznacza odpowiedzi w programie, zadania zamknięte są sprawdzane automatycznie, a rodzic ocenia pytania otwarte – z podpowiedzią oceny od AI.
 - **Powtórka błędów:** po rozwiązaniu jednym kliknięciem powstaje powtórka – te same błędne zadania albo nowe zadania z pomylonych zagadnień.
 - **Historia wyników:** każde podejście zapisuje się samo; wykres postępów i skuteczność w rodzajach zadań.
+- **Rozwiązywanie na tablecie lub telefonie:** kod QR – dziecko rozwiązuje na tablecie w domowej sieci Wi-Fi, wynik wraca do programu.
+- **Opcjonalny limit czasu:** odliczanie po kliknięciu „Zaczynam”; po czasie sprawdzian kończy się sam.
+- **PDF:** e-podręcznik albo skan w PDF dodasz tak jak zdjęcia – program zapyta, które strony wczytać.
 - **Grupy A i B:** druga wersja sprawdzianu dla sąsiada z ławki – przemieszana albo z innymi zadaniami.
 - **Klucz odpowiedzi chroniony hasłem rodzica:** dziecko nie podejrzy rozwiązań.
 - **Podsumowanie na końcu sprawdzianu:** tabela punktów, skala ocen i miejsce na podpis rodzica.
@@ -73,6 +76,17 @@ Program działa w systemie Windows, a cały interfejs jest po polsku.
 
 ![Grupa B](docs/screenshots/08-grupa-b.png)
 
+**Opcjonalny limit czasu – odliczanie startuje po kliknięciu „Zaczynam”**
+
+![Limit czasu](docs/screenshots/11-limit-czasu.png)
+
+**Rozwiązywanie na telefonie lub tablecie (po zeskanowaniu kodu QR z programu)**
+
+<p>
+  <img src="docs/screenshots/12-telefon.png" alt="Sprawdzian na telefonie" width="300" />
+  <img src="docs/screenshots/13-telefon-wynik.png" alt="Wynik na telefonie" width="300" />
+</p>
+
 **Tryb ciemny**
 
 ![Tryb ciemny](docs/screenshots/10-tryb-ciemny.png)
@@ -114,7 +128,7 @@ Program sam wykrywa zainstalowane Claude Code, Codex i Ollamę. Klucz Gemini jes
 
 ## Jak używać
 
-1. **Materiał** (Ctrl+M): dodaj zdjęcia stron albo cały folder.
+1. **Materiał** (Ctrl+M): dodaj zdjęcia stron, plik PDF albo cały folder.
    - AI czyta strony w tle. Przeczytane strony są zapamiętywane, więc następnym razem są gotowe od razu.
    - Kliknięciem zaznacz strony, z których ma być sprawdzian.
 2. **Ustawienia** (Ctrl+,):
@@ -136,8 +150,10 @@ Program sam wykrywa zainstalowane Claude Code, Codex i Ollamę. Klucz Gemini jes
    - **Powtórka błędów:** „Rozwiąż jeszcze raz błędne” (te same zadania, przemieszane odpowiedzi) albo „Nowe zadania z tych zagadnień” (AI).
    - Wynik zapisuje się w **historii wyników** (Narzędzia → Historia wyników, Ctrl+H).
 6. **🔒 Klucz** (Ctrl+2): przy pierwszym otwarciu ustawiasz hasło rodzica.
-7. **Grupa B** – przycisk nad kartką: te same zadania przemieszane albo inne zadania z tego samego materiału (AI). Grupy przełączasz nad kartką; każda ma własny klucz.
-8. **Drukuj albo PDF** (Ctrl+P, Ctrl+E).
+7. **Na tablecie** (Ctrl+T albo przycisk nad kartką): pokaż kod QR i zeskanuj go tabletem lub telefonem w tej samej sieci Wi-Fi. Tablet nie dostaje poprawnych odpowiedzi – sprawdza je program; wynik trafia do historii. Przy pierwszym użyciu Windows może zapytać o dostęp do sieci – zezwól na sieci prywatne.
+   - **Limit czasu** (opcjonalny): Ustawienia → „Limit czasu na rozwiązanie”. Działa w trybie „Rozwiąż” i na tablecie.
+8. **Grupa B** – przycisk nad kartką: te same zadania przemieszane albo inne zadania z tego samego materiału (AI). Grupy przełączasz nad kartką; każda ma własny klucz.
+9. **Drukuj albo PDF** (Ctrl+P, Ctrl+E).
 
 Motyw jasny, ciemny albo systemowy: Widok → Motyw.
 
@@ -150,6 +166,7 @@ Motyw jasny, ciemny albo systemowy: Widok → Motyw.
 - Klucz odpowiedzi, hasło (zapisane jako skrót, nie wprost), ustawienia, biblioteka stron i historia wyników są zapisywane lokalnie w `%APPDATA%\Generator sprawdzianów`.
 - Przy podpowiedzi oceny z AI do wybranego silnika trafiają pytania otwarte, wzorcowe odpowiedzi i odpowiedzi ucznia (bez imienia).
 - Aktualizacje są pobierane z GitHub Releases tego projektu.
+- Rozwiązywanie na tablecie działa tylko w Twojej sieci lokalnej: program uruchamia na ten czas małą stronę pod losowym, jednorazowym adresem i wyłącza ją po zatrzymaniu (najpóźniej po 3 godzinach). Nic nie przechodzi przez internet.
 
 ## Dla programistów
 
@@ -171,8 +188,9 @@ W Windows możesz też kliknąć dwukrotnie `Uruchom.bat`, który przy pierwszym
 | `src/engines/gemini.js` | Gemini API (`generateContent`, odpowiedź JSON wg schematu, automatyczny wybór dostępnego modelu) |
 | `src/engines/ollama.js` | model lokalny przez Ollamę |
 | `src/engines/common.js` | wspólny schemat zadań i polecenie dla AI |
+| `src/remote.js`, `src/remote/tablet.html` | rozwiązywanie na tablecie: serwer w sieci lokalnej i strona dla tabletu |
 | `src/ocr.js` | Tesseract (polski) – odcinanie podpisów z wycinków grafik |
-| `src/renderer/` | interfejs (`index.html`, `styles.css`, `app.js`, `features.js` – powtórka błędów, historia, grupy A/B, ocena AI, aktualizacje) |
+| `src/renderer/` | interfejs (`index.html`, `styles.css`, `app.js`, `features.js` – powtórka błędów, historia, grupy A/B, ocena AI, aktualizacje; `features2.js` – PDF, limit czasu, tablet) |
 
 ## Licencja
 

@@ -8,6 +8,7 @@ const ollama = require("./engines/ollama");
 const codex = require("./engines/codex");
 const geminiFactory = require("./engines/gemini");
 const { buildGradePrompt, GRADE_SCHEMA } = require("./engines/common");
+const remote = require("./remote");
 
 app.setName("Generator sprawdzianów");
 
@@ -145,6 +146,38 @@ ipcMain.handle("update:install", () => {
   return true;
 });
 ipcMain.handle("app:version", () => app.getVersion());
+
+// ================== rozwiązywanie na tablecie (sieć domowa + kod QR) ==================
+const pendingSubmits = new Map();
+remote.setHandlers(
+  (payload) =>
+    new Promise((resolve, reject) => {
+      const id = crypto.randomBytes(8).toString("hex");
+      const timer = setTimeout(() => (pendingSubmits.delete(id), reject(new Error("timeout"))), 15000);
+      pendingSubmits.set(id, (result) => (clearTimeout(timer), pendingSubmits.delete(id), resolve(result)));
+      send("remote:submission", { id, ...payload });
+    }),
+  (event) => send("remote:event", event)
+);
+ipcMain.handle("remote:result", (_e, { id, result }) => {
+  const done = pendingSubmits.get(id);
+  if (done) done(result);
+  return true;
+});
+ipcMain.handle("remote:start", async (_e, test) => {
+  try {
+    const { url, others } = await remote.start(test);
+    const qr = await require("qrcode").toDataURL(url, { margin: 1, width: 360, errorCorrectionLevel: "M", color: { dark: "#0f172a", light: "#ffffff" } });
+    return { ok: true, url, others, qr };
+  } catch (err) {
+    console.error(err);
+    return { ok: false, error: String(err.message || err) };
+  }
+});
+ipcMain.handle("remote:stop", () => {
+  remote.stop();
+  return true;
+});
 
 // ================== historia wyników ==================
 const HISTORY_PATH = () => path.join(app.getPath("userData"), "historia.json");
@@ -297,6 +330,7 @@ function buildMenu() {
         { type: "separator" },
         { label: "Historia wyników…", accelerator: "CmdOrCtrl+H", click: act("history") },
         { label: "Grupa B sprawdzianu…", enabled: hasTest, click: act("groupB") },
+        { label: "Rozwiąż na tablecie lub telefonie…", accelerator: "CmdOrCtrl+T", enabled: hasTest, click: act("tablet") },
         { type: "separator" },
         { label: "Zmień hasło rodzica…", click: act("changePassword") },
         { type: "separator" },
@@ -340,6 +374,7 @@ app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => {
+  remote.stop();
   queue.length = 0;
   for (const r of inflight.values()) r.ctl.abort();
   if (genCtl) genCtl.abort();
@@ -613,8 +648,8 @@ ipcMain.handle("ocr:recognize", async (_e, imageBuffer, opts) => {
 });
 
 // ================== pliki ==================
-const IMAGE_EXT = /\.(jpe?g|png|webp|bmp|gif)$/i;
-const MIME = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", bmp: "image/bmp", gif: "image/gif" };
+const IMAGE_EXT = /\.(jpe?g|png|webp|bmp|gif|pdf)$/i;
+const MIME = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", bmp: "image/bmp", gif: "image/gif", pdf: "application/pdf" };
 
 function readImages(paths, max) {
   return paths.slice(0, max).map((p) => ({
@@ -646,7 +681,7 @@ ipcMain.handle("images:pickFiles", async (_e, { max }) => {
   const { canceled, filePaths } = await dialog.showOpenDialog(win, {
     title: "Wybierz zdjęcia stron",
     defaultPath: cfg.lastFolder && fs.existsSync(cfg.lastFolder) ? cfg.lastFolder : app.getPath("pictures"),
-    filters: [{ name: "Zdjęcia", extensions: ["jpg", "jpeg", "png", "webp", "bmp", "gif"] }],
+    filters: [{ name: "Zdjęcia stron i PDF", extensions: ["jpg", "jpeg", "png", "webp", "bmp", "gif", "pdf"] }],
     properties: ["openFile", "multiSelections"],
   });
   if (canceled || !filePaths.length) return { ok: false, canceled: true };

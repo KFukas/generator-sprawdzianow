@@ -61,4 +61,10 @@ contextBridge.exposeInMainWorld("api", {
   checkUpdates: () => ipcRenderer.invoke("update:check"),
   installUpdate: () => ipcRenderer.invoke("update:install"),
   onUpdateStatus: listen("update:status"),
+  // rozwiązywanie na tablecie
+  remoteStart: (test) => ipcRenderer.invoke("remote:start", test),
+  remoteStop: () => ipcRenderer.invoke("remote:stop"),
+  remoteResult: (id, result) => ipcRenderer.invoke("remote:result", { id, result }),
+  onRemoteSubmission: listen("remote:submission"),
+  onRemoteEvent: listen("remote:event"),
 });

@@ -19,6 +19,7 @@ const state = {
     grade: "",
     subject: "",
     extra: "",
+    timeLimit: "0", // minuty na rozwiązanie w trybie „Rozwiąż” (0 = bez limitu)
   },
   test: null,
   view: "test",
@@ -321,9 +322,11 @@ window.api.onLibraryUpdate((u) => {
 
 // ================== strony (panel „Materiał”) ==================
 async function addFiles(files) {
-  const list = [...files].filter((f) => /^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|bmp)$/i.test(f.name));
-  const rejected = [...files].length - list.length;
-  if (rejected) toast(`Pominięto ${rejected} plik(ów) – obsługiwane są JPG, PNG, WEBP. (Zdjęcia HEIC z iPhone'a zapisz jako JPG.)`, true);
+  files = [...files];
+  if (typeof expandPdfs === "function") files = await expandPdfs(files); // PDF → obrazy stron
+  const list = files.filter((f) => /^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|bmp)$/i.test(f.name));
+  const rejected = files.length - list.length;
+  if (rejected) toast(`Pominięto ${rejected} plik(ów) – obsługiwane są JPG, PNG, WEBP i PDF. (Zdjęcia HEIC z iPhone'a zapisz jako JPG.)`, true);
 
   const room = MAX_PAGES - state.pages.length;
   if (list.length > room) toast(`Można dodać maksymalnie ${MAX_PAGES} stron.`, true);
@@ -599,8 +602,8 @@ let prefsTimer;
 function persistPrefs() {
   clearTimeout(prefsTimer);
   prefsTimer = setTimeout(() => {
-    const { kind, difficulty, count, figures, grade, formats } = state.settings;
-    window.api.savePrefs({ kind, difficulty, count, figures, grade, formats });
+    const { kind, difficulty, count, figures, grade, formats, timeLimit } = state.settings;
+    window.api.savePrefs({ kind, difficulty, count, figures, grade, formats, timeLimit });
   }, 400);
 }
 
@@ -1222,6 +1225,7 @@ function renderPreview() {
         <div class="f">Data: <span class="fill"></span></div>
       </div>
       <div class="t-score">
+        ${Number(state.settings.timeLimit) ? `<div>Czas: ${Number(state.settings.timeLimit)} min</div>` : ""}
         <div>Punkty: <span class="fill"></span> / ${total}</div>
         <div>Ocena: <span class="fill"></span></div>
       </div>
@@ -1617,12 +1621,14 @@ function renderSolveTask(q, i) {
 function renderSolve() {
   const t = state.test;
   const s = state.solve;
+  if (typeof solveGate === "function" && solveGate()) return; // limit czasu: najpierw „Zaczynam”
   const tot = s.finished ? solveTotals() : null;
   const answered = t.questions.filter((q) => {
     const a = s.answers[q.id];
     return a != null && a !== "" && !(typeof a === "object" && !Object.values(a).some((v) => v !== "" && v != null));
   }).length;
   $("#sheet-solve").innerHTML = `
+    ${typeof timerHtml === "function" ? timerHtml() : ""}
     <div class="t-head">
       <h1 class="t-title">${esc(t.title)}</h1>
       <div class="s-namerow">Imię i nazwisko: <input class="s-name" data-sinput="name" value="${esc(s.name)}" ${s.finished ? "disabled" : ""} placeholder="wpisz swoje imię" /></div>

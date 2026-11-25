@@ -156,6 +156,9 @@ async function recordHistory() {
     wrong: wrongQuestions().map((q) => q.question).slice(0, 20),
     seconds: Math.max(0, Math.round((end - (s.startedAt || end)) / 1000)),
     retry: /^Powtórka – /.test(t.title),
+    timeLimit: Number(state.settings.timeLimit) || 0,
+    timeUp: Boolean(s.timeUp),
+    remote: Boolean(s.remote),
   });
 }
 
@@ -228,7 +231,7 @@ function renderHistory() {
             (e) => `<tr>
               <td>${fmtDate(e.date)}</td>
               <td>${esc(e.name || "–")}</td>
-              <td class="t">${esc(e.title)}${e.group ? ` <span class="badge">gr. ${esc(e.group)}</span>` : ""}${e.retry ? ` <span class="badge retry">powtórka</span>` : ""}${e.wrong && e.wrong.length ? `<div class="muted small" title="${esc(e.wrong.join("\n"))}">błędy: ${e.wrong.length}</div>` : ""}</td>
+              <td class="t">${esc(e.title)}${e.group ? ` <span class="badge">gr. ${esc(e.group)}</span>` : ""}${e.retry ? ` <span class="badge retry">powtórka</span>` : ""}${e.remote ? ` <span class="badge">tablet</span>` : ""}${e.timeUp ? ` <span class="badge retry">⏱ czas minął</span>` : ""}${e.wrong && e.wrong.length ? `<div class="muted small" title="${esc(e.wrong.join("\n"))}">błędy: ${e.wrong.length}</div>` : ""}</td>
               <td class="r">${e.openGraded ? `${e.total} / ${e.max}` : `${e.closed} / ${e.closedMax}*`}</td>
               <td class="r"><b>${Math.round(e.pct)}%</b></td>
               <td>${esc(e.mark || (e.openGraded ? "" : "otwarte bez oceny"))}</td>
