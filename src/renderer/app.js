@@ -996,7 +996,7 @@ async function generate() {
     const pts = state.test.questions.reduce((a, q) => a + q.points, 0);
     toast(
       nQ < plan.length
-        ? `Model ułożył ${nQ} z ${plan.length} zadań (część odrzuciłem jako niepoprawne). Brakujące możesz dodać przyciskiem „🔄 Inne” lub „+ Dodaj pytanie”.`
+        ? `Model ułożył ${nQ} z ${plan.length} zadań (część odrzuciłem jako niepoprawne). Brakujące możesz dodać przyciskiem „Inne zadanie” (przy zadaniu) lub „Dodaj pytanie”.`
         : `Gotowe: ${nQ} ${plural(nQ, "zadanie", "zadania", "zadań")} za ${pts} pkt. Przejrzyj je przed drukiem.`,
       nQ < plan.length,
       7000
@@ -1031,7 +1031,7 @@ function updateGenBanner(total) {
 }
 $("#btn-gen-cancel").addEventListener("click", () => window.api.cancel());
 
-/** „🔄 Inne” – model układa jedno nowe zadanie tego samego rodzaju. */
+/** „Inne zadanie” – model układa jedno nowe zadanie tego samego rodzaju. */
 async function swapQuestion(qi) {
   if (!(await refreshAi())) return openAiSetup();
   const ready = selectedReadyPages().length ? selectedReadyPages() : state.pages.filter((p) => p.analysis);
@@ -1183,12 +1183,12 @@ function renderPreview() {
   $("#sheet-test").classList.toggle("hidden", state.view !== "test");
   $("#sheet-key").classList.toggle("hidden", state.view !== "key");
   $("#sheet-solve").classList.toggle("hidden", state.view !== "solve");
-  $(".preview > .hint").textContent =
+  $("#mode-hint").textContent =
     state.view === "solve"
-      ? "Tryb rozwiązywania – uczeń zaznacza i wpisuje odpowiedzi na ekranie"
+      ? "Uczeń zaznacza i wpisuje odpowiedzi na ekranie"
       : state.view === "key"
-        ? "Klucz odpowiedzi – widoczny tylko po podaniu hasła rodzica"
-        : "Widok do druku i edycji: kliknij w tekst, aby go poprawić · rozwiązywanie na komputerze – zakładka „Rozwiąż”";
+        ? "Widoczny tylko po podaniu hasła rodzica"
+        : "Kliknij w tekst, aby go poprawić · najedź na zadanie, aby zobaczyć opcje";
   if (state.view === "solve") renderSolve();
   $("#sheet-test").classList.toggle("hide-points", !state.showPoints);
   $("#sheet-test").classList.toggle("hide-lines", !state.showLines);
@@ -1212,7 +1212,7 @@ function renderPreview() {
       </div>
     </div>
     ${t.questions.map((q, i) => renderQuestion(q, i)).join("")}
-    <button class="btn add-q" data-act="add-q">+ Dodaj pytanie</button>
+    <button class="add-q no-print" data-act="add-q"><svg class="ico"><use href="#i-plus"/></svg> Dodaj pytanie</button>
     ${state.showSummary && t.questions.length ? renderSummaryTest(t, total) : ""}
   `;
 
@@ -1271,10 +1271,10 @@ function renderQuestion(q, i) {
       <div class="fig" data-fid="${fg.id}" style="width:${figureWidthMm(fg).toFixed(1)}mm">
         <img src="${fg.cropUrl}" alt="${esc(fg.description)}" style="max-height:${figureMaxHeightMm(fg)}mm; width:100%; object-fit:contain" />
         <div class="tools">
-          <button data-act="fig-crop" title="Zmień wycinek">✂ Kadruj</button>
-          <button data-act="fig-smaller" title="Zmniejsz">−</button>
-          <button data-act="fig-bigger" title="Powiększ">+</button>
-          <button data-act="fig-remove" class="danger" title="Usuń grafikę">✕</button>
+          <button data-act="fig-crop" title="Zmień wycinek"><svg class="ico"><use href="#i-crop"/></svg>Kadruj</button>
+          <button data-act="fig-smaller" class="sq" title="Zmniejsz"><svg class="ico"><use href="#i-minus"/></svg></button>
+          <button data-act="fig-bigger" class="sq" title="Powiększ"><svg class="ico"><use href="#i-plus"/></svg></button>
+          <button data-act="fig-remove" class="danger sq" title="Usuń grafikę"><svg class="ico"><use href="#i-trash"/></svg></button>
         </div>
       </div>`
     )
@@ -1313,17 +1313,13 @@ function renderQuestion(q, i) {
   return `
     <section class="q q-${f} ${q.swapping ? "swapping" : ""}" data-qid="${q.id}">
       ${q.swapping ? `<div class="swap-note no-print">🔄 AI układa nowe zadanie…</div>` : ""}
-      <div class="tools">
-        <button data-act="q-swap" title="Zamień na inne zadanie z tych stron">🔄 Inne</button>
-        <span class="sep"></span>
-        <button data-act="q-up" title="Przesuń wyżej" ${i === 0 ? "disabled" : ""}>↑</button>
-        <button data-act="q-down" title="Przesuń niżej" ${i === state.test.questions.length - 1 ? "disabled" : ""}>↓</button>
-        <span class="sep"></span>
-        <button data-act="pts-minus" title="Mniej punktów">−</button><span class="val">${q.points} pkt</span><button data-act="pts-plus" title="Więcej punktów">+</button>
-        ${f === "open" ? `<span class="sep"></span><button data-act="lines-minus" title="Mniej linii">−</button><span class="val">${q.answer_lines} linii</span><button data-act="lines-plus" title="Więcej linii">+</button>` : ""}
-        <span class="sep"></span>
-        <button data-act="fig-add" title="Dodaj grafikę ze strony">🖼</button>
-        <button data-act="q-remove" class="danger" title="Usuń zadanie">🗑</button>
+      <div class="tools q-tools">
+        <button data-act="q-swap" class="accent wide" title="Zamień na inne zadanie z tych stron"><svg class="ico"><use href="#i-rotate"/></svg>Inne zadanie</button>
+        <div class="tg"><span class="tl">Kolejność</span><button data-act="q-up" class="sq" title="Przesuń wyżej" ${i === 0 ? "disabled" : ""}><svg class="ico"><use href="#i-up"/></svg></button><button data-act="q-down" class="sq" title="Przesuń niżej" ${i === state.test.questions.length - 1 ? "disabled" : ""}><svg class="ico"><use href="#i-down"/></svg></button></div>
+        <div class="tg"><span class="tl">Punkty</span><button data-act="pts-minus" class="sq" title="Mniej punktów"><svg class="ico"><use href="#i-minus"/></svg></button><span class="val">${q.points}<span class="tl-short"> pkt</span></span><button data-act="pts-plus" class="sq" title="Więcej punktów"><svg class="ico"><use href="#i-plus"/></svg></button></div>
+        ${f === "open" ? `<div class="tg"><span class="tl">Linie</span><button data-act="lines-minus" class="sq" title="Mniej linii"><svg class="ico"><use href="#i-minus"/></svg></button><span class="val">${q.answer_lines}<span class="tl-short"> linii</span></span><button data-act="lines-plus" class="sq" title="Więcej linii"><svg class="ico"><use href="#i-plus"/></svg></button></div>` : ""}
+        <button data-act="fig-add" class="wide" title="Dodaj grafikę ze strony"><svg class="ico"><use href="#i-image"/></svg>Grafika</button>
+        <button data-act="q-remove" class="danger wide" title="Usuń zadanie"><svg class="ico"><use href="#i-trash"/></svg><span class="tl">Usuń</span></button>
       </div>
       <div class="q-row">
         <span class="q-num">${i + 1}.</span>

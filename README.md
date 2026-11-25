@@ -23,6 +23,14 @@ Program działa w systemie Windows, a cały interfejs jest po polsku.
 <details>
 <summary><b>Więcej zrzutów: zadania, materiał, ustawienia, rozwiązywanie, klucz</b></summary>
 
+**Ekran startowy**
+
+![Ekran startowy](docs/screenshots/00-start.png)
+
+**Edycja zadania – panel obok kartki: inne zadanie, kolejność, punkty, grafika**
+
+![Edycja zadania](docs/screenshots/01b-edycja-zadania.png)
+
 **Prawda/fałsz, dopasowania i luki**
 
 ![Zadania prawda/fałsz i dopasowanie](docs/screenshots/01c-prawda-falsz-dopasowanie.png)
@@ -97,7 +105,7 @@ Program sam wykrywa zainstalowane Claude Code, Codex i Ollamę. Klucz Gemini jes
 3. **Generuj** (Ctrl+G).
 4. **Popraw:**
    - Kliknij w tekst, aby go zmienić.
-   - Po najechaniu na zadanie możesz kliknąć **🔄 Inne**, zmienić punkty albo przesunąć zadanie.
+   - Po najechaniu na zadanie możesz kliknąć **Inne zadanie**, zmienić punkty albo przesunąć zadanie.
    - Grafikę można przykadrować.
 5. **Rozwiąż** (Ctrl+3): uczeń rozwiązuje sprawdzian na komputerze.
    - Klika odpowiedzi ABC oraz P/F, wybiera litery w dopasowaniach, wpisuje wyrazy w luki i odpowiedzi na pytania otwarte.
