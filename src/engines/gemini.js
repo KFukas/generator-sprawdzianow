@@ -128,6 +128,16 @@ function makeEngine(getKey) {
     }
   }
 
+  /** Dowolne zapytanie z odpowiedzią w JSON wg schematu (np. ocena odpowiedzi ucznia). */
+  async function ask({ prompt, schema, signal }) {
+    try {
+      const { data } = await generate(getKey(), { parts: [{ text: prompt }], schema, signal });
+      return data;
+    } catch (e) {
+      throw new Error(friendlyError(e));
+    }
+  }
+
   /** Szybka kontrola klucza (lista modeli). */
   async function check(key) {
     try {
@@ -139,7 +149,7 @@ function makeEngine(getKey) {
     }
   }
 
-  return { readPage, generateTest, check };
+  return { readPage, generateTest, ask, check };
 }
 
 module.exports = { makeEngine };

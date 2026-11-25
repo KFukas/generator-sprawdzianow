@@ -167,9 +167,15 @@ async function generateTest({ pages, figures, plan, settings, avoid, signal, onT
   return { title: String(data.title || ""), tasks };
 }
 
+/** Dowolne zapytanie z odpowiedzią w JSON wg schematu (np. ocena odpowiedzi ucznia). */
+async function ask({ prompt, schema, signal }) {
+  const { data } = await run({ prompt: prompt + "\nNie uruchamiaj żadnych poleceń – odpowiedz wyłącznie danymi w wymaganym formacie.", schema, effort: "low", signal, timeoutMs: 300000 });
+  return data;
+}
+
 function status() {
   const p = codexPath();
   return { installed: Boolean(p), ready: Boolean(p), path: p };
 }
 
-module.exports = { status, readPage, generateTest, findCodex };
+module.exports = { status, readPage, generateTest, ask, findCodex };

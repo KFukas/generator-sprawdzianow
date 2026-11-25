@@ -250,4 +250,11 @@ async function generateTest({ pages, figures, plan, settings, avoid, signal, onT
   return { title: parsed.title || "", tasks };
 }
 
-module.exports = { MODEL, status, ensureServer, pullModel, readPage, generateTest };
+/** Dowolne zapytanie z odpowiedzią w JSON wg schematu (np. ocena odpowiedzi ucznia). */
+async function ask({ prompt, schema, signal }) {
+  const numPredict = 1200;
+  const res = await chat({ prompt, format: schema, numPredict, numCtx: ctxFor(prompt, numPredict), temperature: 0.1, signal });
+  return JSON.parse(res.content);
+}
+
+module.exports = { MODEL, status, ensureServer, pullModel, readPage, generateTest, ask };

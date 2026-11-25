@@ -32,6 +32,7 @@
       <symbol id="i-crop" viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></symbol>
       <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
       <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+      <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></symbol>
       <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></symbol>
     </defs>
   </svg>
@@ -54,6 +55,7 @@
       <button class="engine-chip" id="ai-status" title="Silnik AI – kliknij, aby zmienić">Silnik AI…</button>
       <span class="divider"></span>
       <div class="filebar">
+        <button class="fbtn" id="btn-history" title="Historia wyników (Ctrl+H)"><svg><use href="#i-chart"/></svg><span>Historia</span></button>
         <button class="fbtn" id="btn-open" title="Otwórz sprawdzian (Ctrl+O)"><svg><use href="#i-open"/></svg><span>Otwórz</span></button>
         <button class="fbtn" id="btn-save" title="Zapisz sprawdzian (Ctrl+S)" disabled><svg><use href="#i-save"/></svg><span>Zapisz</span></button>
         <button class="fbtn" id="btn-print" title="Drukuj (Ctrl+P)" disabled><svg><use href="#i-print"/></svg><span>Drukuj</span></button>
@@ -100,6 +102,7 @@
           <button class="tab" data-view="solve" title="Uczeń rozwiązuje na komputerze (Ctrl+3)"><svg class="ico"><use href="#i-pen"/></svg> Rozwiąż</button>
           <button class="tab" data-view="key" title="Klucz odpowiedzi – chroniony hasłem rodzica (Ctrl+2)"><svg class="ico"><use href="#i-lock"/></svg> Klucz</button>
         </div>
+        <div class="modebar-extra" id="modebar-extra"><div id="group-switch"></div></div>
         <div class="mode-hint" id="mode-hint"></div>
       </div>
       <div id="gen-banner" class="gen-banner no-print hidden">
@@ -114,6 +117,8 @@
       </div>
     </div>
   </main>
+
+  <div id="update-bar" class="update-bar hidden no-print"></div>
 
   <footer class="statusbar no-print">
     <span id="status-left">Gotowy</span>
@@ -256,6 +261,38 @@
     </div>
   </div>
 
+  <!-- ======== PODOKNO: HISTORIA WYNIKÓW ======== -->
+  <div id="dlg-history" class="modal hidden no-print" data-dialog>
+    <div class="window window-history">
+      <div class="window-head">
+        <div>
+          <h2>Historia wyników</h2>
+          <div class="panel-sub" id="hist-info"></div>
+        </div>
+        <button class="icon-btn" data-close title="Zamknij (Esc)"><svg><use href="#i-x"/></svg></button>
+      </div>
+      <div class="window-toolbar">
+        <select id="hist-name" class="select"></select>
+        <select id="hist-subject" class="select"></select>
+        <button class="btn ghost danger-text" id="btn-hist-clear" style="margin-left:auto"><svg class="ico"><use href="#i-trash"/></svg> Usuń historię</button>
+      </div>
+      <div class="window-body" id="hist-body"></div>
+    </div>
+  </div>
+
+  <!-- ======== GRUPA B ======== -->
+  <div id="modal-groupb" class="modal hidden no-print" data-dialog>
+    <div class="modal-box">
+      <h2>Grupa B</h2>
+      <p>Druga wersja sprawdzianu – dla sąsiada z ławki. Grupy przełączasz nad kartką; każdą drukujesz i rozwiązujesz osobno, z własnym kluczem.</p>
+      <div class="choice-list">
+        <button class="choice" data-gb="shuffle"><b>Te same zadania, przemieszane</b><span>Inna kolejność zadań i odpowiedzi. Od razu, bez AI.</span></button>
+        <button class="choice" data-gb="ai"><b>✨ Inne zadania z tego samego materiału</b><span>AI układa nowe zadania tego samego rodzaju i o podobnej trudności.</span></button>
+      </div>
+      <div class="modal-actions"><button class="btn ghost" data-gb="cancel">Anuluj</button></div>
+    </div>
+  </div>
+
   <!-- ======== KADROWANIE ======== -->
   <div id="modal-crop" class="modal hidden no-print">
     <div class="modal-box wide">
@@ -312,6 +349,9 @@
         <li><b>Generuj</b> (Ctrl+G). Zadania pojawiają się w podglądzie. Kliknij w tekst, aby poprawić; najedź na zadanie – „Inne zadanie” podmieni je na nowe.</li>
         <li><b>Klucz odpowiedzi</b> (Ctrl+2) jest chroniony hasłem rodzica, ustawianym przy pierwszym otwarciu. Zmiana: Narzędzia → Zmień hasło rodzica.</li>
         <li><b>Drukuj / PDF</b> (Ctrl+P, Ctrl+E). Sprawdzian i klucz drukują się osobno; na końcu sprawdzianu jest podsumowanie punktów i skala ocen.</li>
+        <li><b>Rozwiąż</b> (Ctrl+3) – dziecko rozwiązuje na komputerze. Po zakończeniu: wynik i ocena, <b>powtórka błędów</b> (te same albo nowe zadania z pomylonych zagadnień), a po podaniu hasła – podpowiedź oceny zadań otwartych z AI.</li>
+        <li><b>Historia wyników</b> (Ctrl+H) – wszystkie podejścia z wykresem postępów i skutecznością w rodzajach zadań.</li>
+        <li><b>Grupa B</b> – przycisk nad kartką: druga wersja sprawdzianu (przemieszana albo z innymi zadaniami).</li>
         <li><b>Silnik AI</b> (kliknij znaczek silnika u góry albo Narzędzia → Silnik AI): Claude lub Codex (płatne subskrypcje), Google Gemini (darmowy klucz) albo model lokalny (darmowy, offline).</li>
       </ol>
       <div class="modal-actions"><button class="btn primary" id="btn-help-close">Zamknij</button></div>
@@ -321,5 +361,6 @@
   <div id="toast" class="toast hidden no-print"></div>
 
   <script src="app.js"></script>
+  <script src="features.js"></script>
 </body>
 </html>

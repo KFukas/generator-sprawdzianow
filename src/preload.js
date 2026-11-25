@@ -49,4 +49,16 @@ contextBridge.exposeInMainWorld("api", {
   print: () => ipcRenderer.invoke("print"),
   saveProject: (defaultName, data) => ipcRenderer.invoke("project:save", { defaultName, data }),
   openProject: () => ipcRenderer.invoke("project:open"),
+  // ocena pytań otwartych przez AI (podpowiedź dla rodzica)
+  gradeOpen: (items, settings) => ipcRenderer.invoke("ai:gradeOpen", { items, settings }),
+  // historia wyników
+  historyList: () => ipcRenderer.invoke("history:list"),
+  historySave: (entry) => ipcRenderer.invoke("history:save", entry),
+  historyDelete: (id) => ipcRenderer.invoke("history:delete", id),
+  historyClear: () => ipcRenderer.invoke("history:clear"),
+  // aktualizacje
+  appVersion: () => ipcRenderer.invoke("app:version"),
+  checkUpdates: () => ipcRenderer.invoke("update:check"),
+  installUpdate: () => ipcRenderer.invoke("update:install"),
+  onUpdateStatus: listen("update:status"),
 });

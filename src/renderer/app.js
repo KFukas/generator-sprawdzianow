@@ -927,8 +927,14 @@ async function waitForPages(sel) {
   return false;
 }
 
-async function generate() {
-  const sel = state.pages.filter((p) => p.selected);
+/**
+ * Układa zadania przez AI.
+ * opts.pages – strony (domyślnie zaznaczone), opts.settings – zmiany ustawień, opts.plan – gotowy plan zadań,
+ * opts.avoid – pytania do pominięcia, opts.title – tytuł, opts.begin() – przygotowanie miejsca na zadania
+ * (np. grupa B) zamiast nowego sprawdzianu, opts.fail() – sprzątanie, gdy nic nie powstało.
+ */
+async function generate(opts = {}) {
+  const sel = opts.pages || state.pages.filter((p) => p.selected);
   if (state.generating) return;
   if (!sel.length) {
     openDialog("dlg-material");
@@ -945,15 +951,19 @@ async function generate() {
   const unsubs = [];
   try {
     if (!(await waitForPages(sel))) return toast("Anulowano.");
-    const ready = selectedReadyPages();
+    const ready = opts.pages ? sel.filter((p) => p.analysis && (p.analysis.text || "").length > 40) : selectedReadyPages();
     if (!ready.length) return toast("Nie udało się przeczytać wybranych stron. Sprawdź zdjęcia (ostrość, światło) i spróbuj ponownie.", true);
 
-    const s = state.settings;
+    const s = { ...state.settings, ...(opts.settings || {}) };
     const { material, figures } = buildMaterial(ready);
-    const plan = buildPlan(s.count, s.formats, figures.length);
-    const kindLabel = s.kind === "sprawdzian" ? "Sprawdzian" : "Kartkówka";
-    const topic = ready[0].analysis.title || s.subject || "";
-    state.test = { title: topic ? `${kindLabel} – ${topic.replace(/^\d+\.?\s*/, "")}` : kindLabel, subject: s.subject || "", questions: [] };
+    const plan = (opts.plan || buildPlan(s.count, s.formats, figures.length)).map((p) => ({ ...p, figure: Boolean(p.figure && figures.length) }));
+    if (opts.begin) opts.begin();
+    else {
+      const kindLabel = s.kind === "sprawdzian" ? "Sprawdzian" : "Kartkówka";
+      const topic = ready[0].analysis.title || s.subject || "";
+      state.test = { title: opts.title || (topic ? `${kindLabel} – ${topic.replace(/^\d+\.?\s*/, "")}` : kindLabel), subject: s.subject || "", questions: [] };
+    }
+    state.test.pageHashes = ready.map((p) => p.hash);
     resetSolve();
     state.view = "test";
     state.keyUnlocked = false;
@@ -978,22 +988,26 @@ async function generate() {
     };
     unsubs.push(window.api.onTask(({ task, index }) => accept(task, index)));
     unsubs.push(window.api.onProgress(() => updateGenBanner(plan.length)));
-    const res = await window.api.generate({ pages: material, figures: figures.map((f) => ({ caption: f.caption, shows: f.shows, labels: f.labels || [] })), plan, settings: s, avoid: [] });
+    const res = await window.api.generate({ pages: material, figures: figures.map((f) => ({ caption: f.caption, shows: f.shows, labels: f.labels || [] })), plan, settings: s, avoid: opts.avoid || [] });
     // odpowiedź może dojść przed komunikatami z pojedynczymi zadaniami – bierzemy też zadania z wyniku
     if (res.ok) (res.tasks || []).forEach((t, i) => accept(t, i));
     await Promise.all(pending);
     if (!res.ok) {
       toast(res.error, res.error !== "Anulowano.");
-      if (!state.test.questions.length) state.test = null;
+      if (!state.test.questions.length) {
+        if (opts.fail) opts.fail();
+        else state.test = null;
+      }
       return;
     }
-    if (res.title && state.test.questions.length) state.test.title = cleanText(res.title);
+    if (res.title && state.test.questions.length && !opts.title && !opts.begin) state.test.title = cleanText(res.title);
     // kolejność: najpierw zamknięte, na końcu otwarte
     const order = { abc: 0, tf: 1, match: 2, gap: 3, open: 4 };
     state.test.questions.sort((a, b) => order[a.format] - order[b.format]);
     renderPreview();
     const nQ = state.test.questions.length;
     const pts = state.test.questions.reduce((a, q) => a + q.points, 0);
+    if (opts.done) opts.done();
     toast(
       nQ < plan.length
         ? `Model ułożył ${nQ} z ${plan.length} zadań (część odrzuciłem jako niepoprawne). Brakujące możesz dodać przyciskiem „Inne zadanie” (przy zadaniu) lub „Dodaj pytanie”.`
@@ -1178,6 +1192,7 @@ function renderPreview() {
   $("#empty-state").classList.toggle("hidden", Boolean(t));
   syncChrome();
   if (!t) return;
+  if (typeof renderGroupSwitch === "function") renderGroupSwitch();
 
   document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b.dataset.view === state.view));
   $("#sheet-test").classList.toggle("hidden", state.view !== "test");
@@ -1200,7 +1215,7 @@ function renderPreview() {
   $("#sheet-test").innerHTML = `
     <div class="t-head">
       <h1 class="t-title" contenteditable="true" data-edit="title">${esc(t.title)}</h1>
-      ${sub ? `<div class="t-sub">${sub}</div>` : ""}
+      ${sub || t.groups ? `<div class="t-sub">${[sub, t.groups ? `<b class="t-group">Grupa ${esc(t.group)}</b>` : ""].filter(Boolean).join(" · ")}</div>` : ""}
       <div class="t-fields">
         <div class="f">Imię i nazwisko: <span class="fill"></span></div>
         <div class="f">Klasa: <span class="fill"></span></div>
@@ -1223,7 +1238,7 @@ function renderPreview() {
   }
   $("#sheet-key").innerHTML = `
     <div class="t-head">
-      <h1 class="t-title">Klucz odpowiedzi</h1>
+      <h1 class="t-title">Klucz odpowiedzi${t.groups ? ` – grupa ${esc(t.group)}` : ""}</h1>
       <div class="t-sub">${esc(t.title)}</div>
     </div>
     <div class="hint no-print">W zadaniach zamkniętych kliknij odpowiedź, aby zmienić, która jest poprawna.</div>
@@ -1466,10 +1481,10 @@ document.querySelectorAll(".tab").forEach((b) =>
 );
 
 // ================== tryb „Rozwiąż” – uczeń rozwiązuje sprawdzian na komputerze ==================
-state.solve = { answers: {}, openPoints: {}, finished: false, revealed: false, name: "" };
+state.solve = { answers: {}, openPoints: {}, aiGrades: {}, finished: false, revealed: false, name: "", historyId: null, startedAt: Date.now() };
 
 function resetSolve() {
-  state.solve = { answers: {}, openPoints: {}, finished: false, revealed: false, name: state.solve ? state.solve.name : "" };
+  state.solve = { answers: {}, openPoints: {}, aiGrades: {}, finished: false, revealed: false, name: state.solve ? state.solve.name : "", historyId: null, startedAt: Date.now() };
 }
 
 const normAns = (s) =>
@@ -1582,6 +1597,7 @@ function renderSolveTask(q, i) {
   } else {
     body = `<textarea class="s-open" data-sinput="open" rows="${Math.max(3, q.answer_lines)}" ${dis} placeholder="Napisz odpowiedź…">${esc(a || "")}</textarea>
       ${rev ? `<div class="s-model"><b>Wzorcowa odpowiedź:</b> ${esc(q.model_answer)}</div>
+        ${typeof aiSuggestionHtml === "function" ? aiSuggestionHtml(q) : ""}
         <div class="s-grade">Punkty za odpowiedź: <input type="number" class="s-pts" data-sinput="openpts" min="0" max="${q.points}" step="0.5" value="${Number.isFinite(state.solve.openPoints[q.id]) ? state.solve.openPoints[q.id] : ""}" /> / ${q.points}</div>` : ""}`;
   }
   const status = done ? (r.auto ? `<span class="s-score ${r.score === q.points ? "ok" : r.score > 0 ? "part" : "bad"}">${r.score} / ${q.points} pkt</span>` : `<span class="s-score wait">${r.score == null ? "do oceny przez rodzica" : `${r.score} / ${q.points} pkt`}</span>`) : `<span class="q-points">(${q.points} pkt)</span>`;
@@ -1625,9 +1641,10 @@ function renderSolve() {
               ${tot.openGraded ? `<div class="sum"><span>Ocena</span><b>${esc(gradeFor(tot.total, tot.max))}</b></div>` : ""}
             </div>
             <div class="s-actions">
-              ${s.revealed ? `<span class="muted small">Poprawne odpowiedzi są zaznaczone na zielono. Wpisz punkty za zadania otwarte.</span>` : `<button class="btn primary" data-sact="reveal">🔒 Pokaż odpowiedzi i oceń (hasło rodzica)</button>`}
+              ${s.revealed ? `<span class="muted small">Poprawne odpowiedzi są zaznaczone na zielono. Wpisz punkty za zadania otwarte${tot.openMax ? " albo poproś AI o podpowiedź" : ""}.</span>${tot.openMax ? `<button class="btn" data-sact="ai-grade">✨ Podpowiedź oceny z AI</button>` : ""}` : `<button class="btn primary" data-sact="reveal">🔒 Pokaż odpowiedzi i oceń (hasło rodzica)</button>`}
               <button class="btn" data-sact="reset">Rozwiąż od nowa</button>
             </div>
+            ${typeof retryHtml === "function" ? retryHtml() : ""}
           </div>`
     }`;
 }
@@ -1660,6 +1677,7 @@ $("#sheet-solve").addEventListener("click", async (e) => {
     if (!(await window.api.confirm("Rozwiązać sprawdzian od nowa?", "Wszystkie odpowiedzi i punkty zostaną wyczyszczone.", "Od nowa"))) return;
     resetSolve();
   }
+  if (typeof onSolveAction === "function" && (await onSolveAction(act, qid, b)) === false) return;
   renderSolveKeepScroll();
   if (act === "finish") $(".main").scrollTop = $(".main").scrollHeight;
 });
@@ -1679,7 +1697,10 @@ const onSolveInput = (e) => {
     const q = state.test.questions.find((x) => x.id === qid);
     const v = parseFloat(String(el.value).replace(",", "."));
     s.openPoints[qid] = Number.isFinite(v) ? Math.max(0, Math.min(q.points, v)) : undefined;
-    if (e.type === "change") renderSolveKeepScroll();
+    if (e.type === "change") {
+      renderSolveKeepScroll();
+      if (typeof recordHistory === "function") recordHistory();
+    }
   }
 };
 $("#sheet-solve").addEventListener("input", onSolveInput);
@@ -1776,7 +1797,7 @@ async function exportPdf(which = state.view) {
     renderPreview();
   }
   await withPrintMode(async () => {
-    const base = state.test.title || "Sprawdzian";
+    const base = (state.test.title || "Sprawdzian") + (state.test.groups ? ` - grupa ${state.test.group}` : "");
     const res = await window.api.savePdf(which === "key" ? `${base} - klucz odpowiedzi` : base);
     if (res.ok) toast("Zapisano PDF.");
   });
@@ -1794,7 +1815,9 @@ $("#btn-pdf").addEventListener("click", () => exportPdf());
 $("#btn-save").addEventListener("click", async () => {
   if (!state.test) return;
   const pages = state.pages.map(({ id, hash, baseHash, rot, name, url, width, height, selected, analysis }) => ({ id, hash, baseHash, rot, name, url, width, height, selected, analysis }));
-  const data = JSON.stringify({ version: 3, settings: state.settings, pages, test: state.test });
+  const t = state.test;
+  const test = t.groups ? { ...t, groups: Object.fromEntries(Object.entries(t.groups).map(([g, qs]) => [g, g === t.group ? null : qs])) } : t;
+  const data = JSON.stringify({ version: 3, settings: state.settings, pages, test });
   const res = await window.api.saveProject(state.test.title, data);
   if (res.ok) toast("Zapisano sprawdzian.");
 });
@@ -1812,6 +1835,7 @@ $("#btn-open").addEventListener("click", async () => {
       if (!p.hash) p.hash = p.baseHash = p.id; // plik z wcześniejszej wersji programu
     }
     state.test = data.test;
+    if (state.test.groups) state.test.groups[state.test.group] = state.test.questions;
     resetSolve();
     Object.assign(state.settings, data.settings || {});
     state.view = "test";
@@ -2016,6 +2040,8 @@ window.api.onMenu(async (action, arg) => {
     }
     case "help":
       return $("#modal-help").classList.remove("hidden");
+    default:
+      if (typeof onMenuExtra === "function") return onMenuExtra(action, arg);
   }
 });
 

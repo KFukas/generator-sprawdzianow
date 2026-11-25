@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu, safeStorage } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, safeStorage, nativeTheme } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
@@ -7,6 +7,7 @@ const claude = require("./engines/claude");
 const ollama = require("./engines/ollama");
 const codex = require("./engines/codex");
 const geminiFactory = require("./engines/gemini");
+const { buildGradePrompt, GRADE_SCHEMA } = require("./engines/common");
 
 app.setName("Generator sprawdzianów");
 
@@ -95,6 +96,91 @@ function setEngine(id) {
   pump();
 }
 
+// ================== motyw (jasny / ciemny / systemowy) ==================
+const THEMES = { system: "Jak w systemie", light: "Jasny", dark: "Ciemny" };
+function applyTheme() {
+  const t = readConfig().theme;
+  nativeTheme.themeSource = THEMES[t] ? t : "system";
+}
+function setTheme(t) {
+  if (!THEMES[t]) return;
+  writeConfig({ ...readConfig(), theme: t });
+  applyTheme();
+  buildMenu();
+}
+
+// ================== aktualizacje (GitHub Releases) ==================
+let updater = null;
+let updateManual = false;
+function setupUpdater() {
+  if (!app.isPackaged) return;
+  try {
+    ({ autoUpdater: updater } = require("electron-updater"));
+  } catch (e) {
+    console.error("electron-updater", e);
+    return;
+  }
+  updater.autoDownload = true; // nowa wersja pobiera się w tle…
+  updater.autoInstallOnAppQuit = true; // …i instaluje przy zamknięciu programu
+  updater.on("update-available", (info) => send("update:status", { state: "downloading", version: info.version, percent: 0 }));
+  updater.on("update-not-available", () => updateManual && send("update:status", { state: "none", version: app.getVersion() }));
+  updater.on("download-progress", (p) => send("update:status", { state: "downloading", percent: Math.round(p.percent || 0) }));
+  updater.on("update-downloaded", (info) => send("update:status", { state: "ready", version: info.version }));
+  updater.on("error", (e) => {
+    console.error("aktualizacja", e);
+    if (updateManual) send("update:status", { state: "error", message: "Nie udało się sprawdzić aktualizacji. Sprawdź połączenie z internetem." });
+  });
+  setTimeout(() => updater.checkForUpdates().catch(() => {}), 6000);
+  setInterval(() => updater.checkForUpdates().catch(() => {}), 6 * 3600 * 1000);
+}
+function checkUpdatesManually() {
+  if (!updater) return send("update:status", { state: "dev", version: app.getVersion() });
+  updateManual = true;
+  send("update:status", { state: "checking" });
+  updater.checkForUpdates().catch(() => {});
+}
+ipcMain.handle("update:check", () => checkUpdatesManually());
+ipcMain.handle("update:install", () => {
+  if (updater) setImmediate(() => updater.quitAndInstall(true, true));
+  return true;
+});
+ipcMain.handle("app:version", () => app.getVersion());
+
+// ================== historia wyników ==================
+const HISTORY_PATH = () => path.join(app.getPath("userData"), "historia.json");
+function readHistory() {
+  try {
+    const h = JSON.parse(fs.readFileSync(HISTORY_PATH(), "utf8"));
+    return Array.isArray(h) ? h : [];
+  } catch {
+    return [];
+  }
+}
+function writeHistory(h) {
+  fs.mkdirSync(path.dirname(HISTORY_PATH()), { recursive: true });
+  fs.writeFileSync(HISTORY_PATH(), JSON.stringify(h.slice(-500), null, 1), "utf8");
+}
+ipcMain.handle("history:list", () => readHistory());
+ipcMain.handle("history:save", (_e, entry) => {
+  if (!entry || typeof entry.id !== "string") return false;
+  const h = readHistory();
+  const i = h.findIndex((x) => x.id === entry.id);
+  if (i >= 0) h[i] = entry;
+  else h.push(entry);
+  writeHistory(h);
+  return true;
+});
+ipcMain.handle("history:delete", (_e, id) => {
+  writeHistory(readHistory().filter((x) => x.id !== id));
+  return true;
+});
+ipcMain.handle("history:clear", async () => {
+  const { response } = await dialog.showMessageBox(win, { type: "warning", buttons: ["Usuń całą historię", "Anuluj"], defaultId: 1, cancelId: 1, title: "Historia wyników", message: "Usunąć całą historię wyników?", detail: "Tej operacji nie można cofnąć." });
+  if (response !== 0) return false;
+  writeHistory([]);
+  return true;
+});
+
 // ================== okno ==================
 let win;
 let uiState = { view: "test", showPoints: true, showLines: true, showSummary: true, hasTest: false, busy: false };
@@ -180,6 +266,11 @@ function buildMenu() {
         { label: "Linie na odpowiedź", type: "checkbox", checked: uiState.showLines, click: act("toggle", "showLines") },
         { label: "Podsumowanie na końcu", type: "checkbox", checked: uiState.showSummary, click: act("toggle", "showSummary") },
         { type: "separator" },
+        {
+          label: "Motyw",
+          submenu: Object.entries(THEMES).map(([key, label]) => ({ label, type: "radio", checked: (readConfig().theme || "system") === key, click: () => setTheme(key) })),
+        },
+        { type: "separator" },
         { label: "Powiększ", role: "zoomIn", accelerator: "CmdOrCtrl+=" },
         { label: "Pomniejsz", role: "zoomOut" },
         { label: "Rzeczywisty rozmiar", role: "resetZoom" },
@@ -204,6 +295,9 @@ function buildMenu() {
           ],
         },
         { type: "separator" },
+        { label: "Historia wyników…", accelerator: "CmdOrCtrl+H", click: act("history") },
+        { label: "Grupa B sprawdzianu…", enabled: hasTest, click: act("groupB") },
+        { type: "separator" },
         { label: "Zmień hasło rodzica…", click: act("changePassword") },
         { type: "separator" },
         { label: "Otwórz folder biblioteki stron", click: () => shell.openPath((fs.mkdirSync(LIB_DIR(), { recursive: true }), LIB_DIR())) },
@@ -214,6 +308,7 @@ function buildMenu() {
       label: "Po&moc",
       submenu: [
         { label: "Jak korzystać", accelerator: "F1", click: act("help") },
+        { label: "Sprawdź aktualizacje…", click: checkUpdatesManually },
         {
           label: "O programie",
           click: () =>
@@ -236,7 +331,9 @@ ipcMain.on("ui:state", (_e, s) => {
 });
 
 app.whenReady().then(() => {
+  applyTheme();
   createWindow();
+  setupUpdater();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -470,6 +567,26 @@ ipcMain.handle("test:generate", async (event, payload) => {
       onProgress: (p) => reply("test:progress", p),
     });
     return { ok: true, ...res };
+  } catch (err) {
+    if (genCtl && genCtl.signal.aborted) return { ok: false, error: "Anulowano." };
+    console.error(err);
+    return { ok: false, error: String(err.message || err) };
+  } finally {
+    genCtl = null;
+    generating--;
+    pump();
+  }
+});
+
+ipcMain.handle("ai:gradeOpen", async (_e, { items, settings }) => {
+  const id = engineId();
+  const e = ENGINES[id];
+  if (!IMPL[e.kind].ask) return { ok: false, error: "Ten silnik nie obsługuje oceniania." };
+  genCtl = new AbortController();
+  generating++;
+  try {
+    const data = await IMPL[e.kind].ask({ prompt: buildGradePrompt(items, settings || {}), schema: GRADE_SCHEMA, engine: id, signal: genCtl.signal });
+    return { ok: true, grades: Array.isArray(data && data.grades) ? data.grades : [] };
   } catch (err) {
     if (genCtl && genCtl.signal.aborted) return { ok: false, error: "Anulowano." };
     console.error(err);

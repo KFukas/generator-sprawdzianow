@@ -4,11 +4,15 @@ Aplikacja dla rodziców i nauczycieli. Robisz telefonem zdjęcia stron podręczn
 
 - **Rodzaje zadań:** otwarte, zamknięte ABC, prawda/fałsz, dopasowania i luki w zdaniach, w dowolnym miksie.
 - **Grafiki ze stron:** ilustracje z podręcznika trafiają do zadań bez podpisów, a napisy na rysunkach, które zdradzałyby odpowiedź, są zasłaniane.
-- **Rozwiązywanie na komputerze:** dziecko zaznacza odpowiedzi w programie, zadania zamknięte są sprawdzane automatycznie, a rodzic ocenia pytania otwarte.
+- **Rozwiązywanie na komputerze:** dziecko zaznacza odpowiedzi w programie, zadania zamknięte są sprawdzane automatycznie, a rodzic ocenia pytania otwarte – z podpowiedzią oceny od AI.
+- **Powtórka błędów:** po rozwiązaniu jednym kliknięciem powstaje powtórka – te same błędne zadania albo nowe zadania z pomylonych zagadnień.
+- **Historia wyników:** każde podejście zapisuje się samo; wykres postępów i skuteczność w rodzajach zadań.
+- **Grupy A i B:** druga wersja sprawdzianu dla sąsiada z ławki – przemieszana albo z innymi zadaniami.
 - **Klucz odpowiedzi chroniony hasłem rodzica:** dziecko nie podejrzy rozwiązań.
 - **Podsumowanie na końcu sprawdzianu:** tabela punktów, skala ocen i miejsce na podpis rodzica.
 - **Poprawki:** każde zadanie można edytować albo podmienić na nowe.
 - **Druk i PDF:** sprawdzian i klucz drukują się osobno.
+- **Tryb ciemny** i **automatyczne aktualizacje** (nowa wersja pobiera się w tle i instaluje przy zamknięciu programu).
 
 Program działa w systemie Windows, a cały interfejs jest po polsku.
 
@@ -47,7 +51,7 @@ Program działa w systemie Windows, a cały interfejs jest po polsku.
 
 ![Tryb Rozwiąż](docs/screenshots/04-rozwiaz.png)
 
-**Wynik i ocena**
+**Wynik, ocena i powtórka błędów**
 
 ![Wynik rozwiązywania](docs/screenshots/04b-wynik.png)
 
@@ -56,6 +60,22 @@ Program działa w systemie Windows, a cały interfejs jest po polsku.
 ![Hasło rodzica](docs/screenshots/05a-haslo-rodzica.png)
 
 ![Klucz odpowiedzi](docs/screenshots/05-klucz.png)
+
+**Podpowiedź oceny zadania otwartego z AI (rodzic zatwierdza)**
+
+![Ocena z AI](docs/screenshots/07-ocena-ai.png)
+
+**Historia wyników – wykres postępów i skuteczność w rodzajach zadań**
+
+![Historia wyników](docs/screenshots/09-historia.png)
+
+**Grupa B – druga wersja sprawdzianu**
+
+![Grupa B](docs/screenshots/08-grupa-b.png)
+
+**Tryb ciemny**
+
+![Tryb ciemny](docs/screenshots/10-tryb-ciemny.png)
 
 **Wybór silnika AI**
 
@@ -69,6 +89,8 @@ Program działa w systemie Windows, a cały interfejs jest po polsku.
 2. Uruchom go i zainstaluj.
    - Windows może ostrzec, że aplikacja pochodzi od nieznanego wydawcy, bo instalator nie jest podpisany certyfikatem. Kliknij wtedy „Więcej informacji” → „Uruchom mimo to”.
 3. Przy pierwszym uruchomieniu wybierz **silnik AI** (patrz niżej).
+
+Od wersji 1.1.0 program aktualizuje się sam: nowa wersja pobiera się w tle i instaluje przy zamknięciu programu (Pomoc → Sprawdź aktualizacje). Wersje 1.0.x trzeba jednorazowo zaktualizować ręcznie, instalując nowy plik z Releases.
 
 ## Silnik AI: co wybrać?
 
@@ -110,9 +132,14 @@ Program sam wykrywa zainstalowane Claude Code, Codex i Ollamę. Klucz Gemini jes
 5. **Rozwiąż** (Ctrl+3): uczeń rozwiązuje sprawdzian na komputerze.
    - Klika odpowiedzi ABC oraz P/F, wybiera litery w dopasowaniach, wpisuje wyrazy w luki i odpowiedzi na pytania otwarte.
    - Po kliknięciu „Zakończ i sprawdź” zadania zamknięte są oceniane automatycznie (✓/✗).
-   - Rodzic po podaniu hasła widzi poprawne odpowiedzi, przyznaje punkty za pytania otwarte i dostaje wynik z oceną.
+   - Rodzic po podaniu hasła widzi poprawne odpowiedzi i przyznaje punkty za pytania otwarte. Przycisk **„Podpowiedź oceny z AI”** proponuje punkty z krótkim komentarzem – rodzic je zatwierdza.
+   - **Powtórka błędów:** „Rozwiąż jeszcze raz błędne” (te same zadania, przemieszane odpowiedzi) albo „Nowe zadania z tych zagadnień” (AI).
+   - Wynik zapisuje się w **historii wyników** (Narzędzia → Historia wyników, Ctrl+H).
 6. **🔒 Klucz** (Ctrl+2): przy pierwszym otwarciu ustawiasz hasło rodzica.
-7. **Drukuj albo PDF** (Ctrl+P, Ctrl+E).
+7. **Grupa B** – przycisk nad kartką: te same zadania przemieszane albo inne zadania z tego samego materiału (AI). Grupy przełączasz nad kartką; każda ma własny klucz.
+8. **Drukuj albo PDF** (Ctrl+P, Ctrl+E).
+
+Motyw jasny, ciemny albo systemowy: Widok → Motyw.
 
 **Dobre zdjęcia:** jedna strona na zdjęcie, prosto z góry, przy dobrym świetle i bez cienia dłoni. Zdjęcia HEIC z iPhone'a trzeba zapisać jako JPG.
 
@@ -120,7 +147,9 @@ Program sam wykrywa zainstalowane Claude Code, Codex i Ollamę. Klucz Gemini jes
 
 - Zdjęcia stron są wysyłane tylko do wybranego silnika AI. Wyjątek to model lokalny, przy którym nic nie opuszcza komputera.
 - Program nie ma własnego serwera i nie zbiera żadnych danych.
-- Klucz odpowiedzi, hasło (zapisane jako skrót, nie wprost), ustawienia i biblioteka stron są zapisywane lokalnie w `%APPDATA%\Generator sprawdzianów`.
+- Klucz odpowiedzi, hasło (zapisane jako skrót, nie wprost), ustawienia, biblioteka stron i historia wyników są zapisywane lokalnie w `%APPDATA%\Generator sprawdzianów`.
+- Przy podpowiedzi oceny z AI do wybranego silnika trafiają pytania otwarte, wzorcowe odpowiedzi i odpowiedzi ucznia (bez imienia).
+- Aktualizacje są pobierane z GitHub Releases tego projektu.
 
 ## Dla programistów
 
@@ -143,7 +172,7 @@ W Windows możesz też kliknąć dwukrotnie `Uruchom.bat`, który przy pierwszym
 | `src/engines/ollama.js` | model lokalny przez Ollamę |
 | `src/engines/common.js` | wspólny schemat zadań i polecenie dla AI |
 | `src/ocr.js` | Tesseract (polski) – odcinanie podpisów z wycinków grafik |
-| `src/renderer/` | interfejs (`index.html`, `styles.css`, `app.js`) |
+| `src/renderer/` | interfejs (`index.html`, `styles.css`, `app.js`, `features.js` – powtórka błędów, historia, grupy A/B, ocena AI, aktualizacje) |
 
 ## Licencja
 

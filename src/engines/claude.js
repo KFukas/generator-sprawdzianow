@@ -158,9 +158,15 @@ async function generateTest({ pages, figures, plan, settings, avoid, engine, sig
   return { title: String(data.title || ""), tasks };
 }
 
+/** Dowolne zapytanie z odpowiedzią w JSON wg schematu (np. ocena odpowiedzi ucznia). */
+async function ask({ prompt, schema, engine, signal }) {
+  const { data } = await run({ prompt: prompt + "\nOdpowiedz wyłącznie danymi w wymaganym formacie.", schema, tools: "", model: MODELS[engine] || "sonnet", signal, timeoutMs: 240000 });
+  return data;
+}
+
 function status() {
   const p = claudePath();
   return { installed: Boolean(p), ready: Boolean(p), path: p };
 }
 
-module.exports = { status, readPage, generateTest, findClaude };
+module.exports = { status, readPage, generateTest, ask, findClaude };
