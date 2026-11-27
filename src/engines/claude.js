@@ -159,9 +159,27 @@ async function generateTest({ pages, figures, plan, settings, avoid, engine, sig
 }
 
 /** Dowolne zapytanie z odpowiedzią w JSON wg schematu (np. ocena odpowiedzi ucznia). */
-async function ask({ prompt, schema, engine, signal }) {
-  const { data } = await run({ prompt: prompt + "\nOdpowiedz wyłącznie danymi w wymaganym formacie.", schema, tools: "", model: MODELS[engine] || "sonnet", signal, timeoutMs: 240000 });
-  return data;
+async function ask({ prompt, schema, images, engine, signal }) {
+  const model = MODELS[engine] || "sonnet";
+  if (!images || !images.length) {
+    const { data } = await run({ prompt: prompt + "\nOdpowiedz wyłącznie danymi w wymaganym formacie.", schema, tools: "", model, signal, timeoutMs: 240000 });
+    return data;
+  }
+  // zdjęcia (np. rozwiązanej kartki) – jako pliki w osobnym folderze, model ogląda je narzędziem Read
+  const dir = path.join(os.tmpdir(), "generator-sprawdzianow", crypto.randomBytes(6).toString("hex"));
+  fs.mkdirSync(dir, { recursive: true });
+  try {
+    const names = images.map((b64, i) => {
+      const n = `zdjecie-${i + 1}.jpg`;
+      fs.writeFileSync(path.join(dir, n), Buffer.from(b64, "base64"));
+      return n;
+    });
+    const intro = `Obejrzyj pliki ${names.join(", ")} (w tym folderze) – to zdjęcia, o których mowa niżej.\n\n`;
+    const { data } = await run({ prompt: intro + prompt + "\nOdpowiedz wyłącznie danymi w wymaganym formacie.", schema, tools: "Read", cwd: dir, model, signal, timeoutMs: 420000 });
+    return data;
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 function status() {

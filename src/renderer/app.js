@@ -544,7 +544,7 @@ window.addEventListener("drop", (e) => {
 
 // ================== ustawienia testu ==================
 function bindSettings() {
-  document.querySelectorAll(".segmented").forEach((seg) => {
+  document.querySelectorAll(".segmented[data-name]").forEach((seg) => {
     const name = seg.dataset.name;
     seg.addEventListener("click", (e) => {
       const b = e.target.closest("button");
@@ -589,7 +589,7 @@ function bindSettings() {
 }
 
 function bindSettingsValues() {
-  document.querySelectorAll(".segmented").forEach((seg) =>
+  document.querySelectorAll(".segmented[data-name]").forEach((seg) =>
     seg.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.value === state.settings[seg.dataset.name]))
   );
   document.querySelectorAll("#formats button").forEach((b) => b.classList.toggle("active", state.settings.formats.includes(b.dataset.value)));
@@ -945,6 +945,7 @@ async function generate(opts = {}) {
   }
   document.querySelectorAll("[data-dialog]").forEach((d) => d.classList.add("hidden"));
   if (!(await refreshAi())) return openAiSetup();
+  if (typeof flushLibrary === "function") await flushLibrary(); // poprzedni sprawdzian zostaje w bibliotece
   if (sel.length > 8) toast(`Wybrano ${sel.length} stron – sprawdzian obejmie skrócony tekst każdej z nich. Dla lepszych pytań wybierz 2–6 stron.`, false, 7000);
 
   state.generating = true;
@@ -1051,7 +1052,8 @@ $("#btn-gen-cancel").addEventListener("click", () => window.api.cancel());
 /** „Inne zadanie” – model układa jedno nowe zadanie tego samego rodzaju. */
 async function swapQuestion(qi) {
   if (!(await refreshAi())) return openAiSetup();
-  const ready = selectedReadyPages().length ? selectedReadyPages() : state.pages.filter((p) => p.analysis);
+  const own = typeof pagesForTest === "function" ? pagesForTest(state.test) : [];
+  const ready = own.length ? own : selectedReadyPages().length ? selectedReadyPages() : state.pages.filter((p) => p.analysis);
   if (!ready.length) return toast("Brak przeczytanych stron, z których można ułożyć nowe zadanie.", true);
   const old = state.test.questions[qi];
   const { material, figures } = buildMaterial(ready);
@@ -1196,6 +1198,7 @@ function renderPreview() {
   syncChrome();
   if (!t) return;
   if (typeof renderGroupSwitch === "function") renderGroupSwitch();
+  if (typeof onTestChanged === "function") onTestChanged();
 
   document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b.dataset.view === state.view));
   $("#sheet-test").classList.toggle("hidden", state.view !== "test");
@@ -1365,11 +1368,13 @@ document.querySelector(".sheets").addEventListener("input", (e) => {
   const text = el.innerText.replace(/\n$/, "");
   if (field === "title") {
     state.test.title = text;
+    if (typeof onTestChanged === "function") onTestChanged();
     return;
   }
   const qid = el.closest("[data-qid]")?.dataset.qid;
   const q = state.test.questions.find((x) => x.id === qid);
   if (q) setPath(q, field, text);
+  if (typeof onTestChanged === "function") onTestChanged();
 });
 
 document.querySelector(".sheets").addEventListener("paste", (e) => {
@@ -1419,9 +1424,9 @@ document.querySelector(".sheets").addEventListener("click", async (e) => {
       break;
     }
     case "q-swap":
-      if (!state.pages.some((p) => p.ocr)) return toast("Brak odczytanych stron – dodaj zdjęcia i kliknij Generuj.", true);
-      if (!(await swapQuestion(qi))) return;
-      break;
+      if (state.generating) return toast("AI jest teraz zajęte – spróbuj za chwilę.", true);
+      await swapQuestion(qi);
+      return;
     case "q-up":
       if (qi > 0) [qs[qi - 1], qs[qi]] = [qs[qi], qs[qi - 1]];
       break;
@@ -1488,7 +1493,8 @@ document.querySelectorAll(".tab").forEach((b) =>
 state.solve = { answers: {}, openPoints: {}, aiGrades: {}, finished: false, revealed: false, name: "", historyId: null, startedAt: Date.now() };
 
 function resetSolve() {
-  state.solve = { answers: {}, openPoints: {}, aiGrades: {}, finished: false, revealed: false, name: state.solve ? state.solve.name : "", historyId: null, startedAt: Date.now() };
+  const name = (state.solve && state.solve.name) || (typeof profileName === "function" ? profileName() : "");
+  state.solve = { answers: {}, openPoints: {}, aiGrades: {}, finished: false, revealed: false, name, historyId: null, startedAt: Date.now() };
 }
 
 const normAns = (s) =>
@@ -1498,10 +1504,11 @@ const normAns = (s) =>
     .replace(/\s+/g, " ")
     .trim();
 const half = (x) => Math.round(x * 2) / 2;
+const plNum = (x) => String(x).replace(".", ","); // 1,5 pkt – polski zapis ułamka
 
 /** Wynik jednego zadania: punkty, maksimum, czy liczone automatycznie, poprawność części. */
-function solveScore(q) {
-  const a = state.solve.answers[q.id];
+function solveScore(q, s = state.solve) {
+  const a = s.answers[q.id];
   const f = fmtOf(q);
   if (f === "abc") {
     const ok = a === q.correct;
@@ -1519,15 +1526,15 @@ function solveScore(q) {
     const parts = q.items.map((g, i) => Boolean(a && normAns(a[i])) && normAns(a[i]) === normAns(g.answer));
     return { auto: true, score: half((q.points * parts.filter(Boolean).length) / parts.length), parts };
   }
-  const p = state.solve.openPoints[q.id];
+  const p = s.openPoints[q.id];
   return { auto: false, score: Number.isFinite(p) ? p : null, parts: [] };
 }
 
-function solveTotals() {
-  const qs = state.test.questions;
+function solveTotals(s = state.solve, t = state.test) {
+  const qs = t.questions;
   let closed = 0, closedMax = 0, open = 0, openMax = 0, openGraded = true;
   for (const q of qs) {
-    const r = solveScore(q);
+    const r = solveScore(q, s);
     if (r.auto) {
       closed += r.score;
       closedMax += q.points;
@@ -1604,10 +1611,10 @@ function renderSolveTask(q, i) {
         ${typeof aiSuggestionHtml === "function" ? aiSuggestionHtml(q) : ""}
         <div class="s-grade">Punkty za odpowiedź: <input type="number" class="s-pts" data-sinput="openpts" min="0" max="${q.points}" step="0.5" value="${Number.isFinite(state.solve.openPoints[q.id]) ? state.solve.openPoints[q.id] : ""}" /> / ${q.points}</div>` : ""}`;
   }
-  const status = done ? (r.auto ? `<span class="s-score ${r.score === q.points ? "ok" : r.score > 0 ? "part" : "bad"}">${r.score} / ${q.points} pkt</span>` : `<span class="s-score wait">${r.score == null ? "do oceny przez rodzica" : `${r.score} / ${q.points} pkt`}</span>`) : `<span class="q-points">(${q.points} pkt)</span>`;
+  const status = done ? (r.auto ? `<span class="s-score ${r.score === q.points ? "ok" : r.score > 0 ? "part" : "bad"}">${plNum(r.score)} / ${q.points} pkt</span>` : `<span class="s-score wait">${r.score == null ? "do oceny przez rodzica" : `${plNum(r.score)} / ${q.points} pkt`}</span>`) : `<span class="q-points">(${q.points} pkt)</span>`;
   const figs = (q.figures || []).map((fg) => `<div class="fig" style="width:${figureWidthMm(fg).toFixed(1)}mm"><img src="${fg.cropUrl}" alt="" style="max-height:${figureMaxHeightMm(fg)}mm; width:100%; object-fit:contain" /></div>`).join("");
   return `
-    <section class="q s-q" data-qid="${q.id}">
+    <section class="q s-q ${typeof solveTaskClass === "function" ? solveTaskClass(q) : ""}" data-qid="${q.id}">
       <div class="q-row">
         <span class="q-num">${i + 1}.</span>
         <div class="q-text">${esc(q.question)} ${f === "abc" && done ? mark(r.parts[0]) : ""}</div>
@@ -1615,6 +1622,7 @@ function renderSolveTask(q, i) {
       </div>
       ${figs ? `<div class="q-figs">${figs}</div>` : ""}
       ${body}
+      ${typeof explainHtml === "function" ? explainHtml(q) : ""}
     </section>`;
 }
 
@@ -1629,6 +1637,7 @@ function renderSolve() {
   }).length;
   $("#sheet-solve").innerHTML = `
     ${typeof timerHtml === "function" ? timerHtml() : ""}
+    ${typeof solveBannerHtml === "function" ? solveBannerHtml() : ""}
     <div class="t-head">
       <h1 class="t-title">${esc(t.title)}</h1>
       <div class="s-namerow">Imię i nazwisko: <input class="s-name" data-sinput="name" value="${esc(s.name)}" ${s.finished ? "disabled" : ""} placeholder="wpisz swoje imię" /></div>
@@ -1641,9 +1650,9 @@ function renderSolve() {
         : `<div class="s-result">
             <h2>Wynik</h2>
             <div class="s-result-grid">
-              <div><span>Zadania zamknięte</span><b>${tot.closed} / ${tot.closedMax} pkt</b></div>
-              <div><span>Zadania otwarte</span><b>${tot.openMax ? (tot.openGraded ? `${tot.open} / ${tot.openMax} pkt` : "do oceny przez rodzica") : "–"}</b></div>
-              <div class="sum"><span>Razem</span><b>${tot.openGraded ? `${tot.total} / ${tot.max} pkt` : `${tot.closed} pkt + zadania otwarte`}</b></div>
+              <div><span>Zadania zamknięte</span><b>${plNum(tot.closed)} / ${tot.closedMax} pkt</b></div>
+              <div><span>Zadania otwarte</span><b>${tot.openMax ? (tot.openGraded ? `${plNum(tot.open)} / ${tot.openMax} pkt` : "do oceny przez rodzica") : "–"}</b></div>
+              <div class="sum"><span>Razem</span><b>${tot.openGraded ? `${plNum(tot.total)} / ${tot.max} pkt` : `${plNum(tot.closed)} pkt + zadania otwarte`}</b></div>
               ${tot.openGraded ? `<div class="sum"><span>Ocena</span><b>${esc(gradeFor(tot.total, tot.max))}</b></div>` : ""}
             </div>
             <div class="s-actions">
@@ -1828,28 +1837,34 @@ $("#btn-save").addEventListener("click", async () => {
   if (res.ok) toast("Zapisano sprawdzian.");
 });
 
+/** Wczytuje sprawdzian (z pliku albo z biblioteki): strony, ustawienia i zadania. */
+function loadProjectData(data) {
+  if (!data || !data.test || !Array.isArray(data.pages)) throw new Error("zły format");
+  state.pages = data.pages.map((p) => ({ selected: true, status: p.analysis ? "done" : "new", tokens: 0, analysis: null, rot: 0, baseHash: p.hash, ...p }));
+  for (const p of state.pages) {
+    delete p.ocr;
+    delete p.figBoxes;
+    if (!p.hash) p.hash = p.baseHash = p.id; // plik z wcześniejszej wersji programu
+  }
+  state.test = data.test;
+  if (state.test.groups) state.test.groups[state.test.group] = state.test.questions;
+  state.solve.name = "";
+  resetSolve();
+  Object.assign(state.settings, data.settings || {});
+  state.view = "test";
+  state.keyUnlocked = false;
+  bindSettingsValues();
+  renderThumbs();
+  queuePages(state.pages.filter((p) => !p.analysis));
+  renderPreview();
+}
+
 $("#btn-open").addEventListener("click", async () => {
   const res = await window.api.openProject();
   if (!res.ok) return;
+  if (typeof flushLibrary === "function") await flushLibrary();
   try {
-    const data = JSON.parse(res.data);
-    if (!data.test || !Array.isArray(data.pages)) throw new Error("zły format");
-    state.pages = data.pages.map((p) => ({ selected: true, status: p.analysis ? "done" : "new", tokens: 0, analysis: null, rot: 0, baseHash: p.hash, ...p }));
-    for (const p of state.pages) {
-      delete p.ocr;
-      delete p.figBoxes;
-      if (!p.hash) p.hash = p.baseHash = p.id; // plik z wcześniejszej wersji programu
-    }
-    state.test = data.test;
-    if (state.test.groups) state.test.groups[state.test.group] = state.test.questions;
-    resetSolve();
-    Object.assign(state.settings, data.settings || {});
-    state.view = "test";
-    state.keyUnlocked = false;
-    bindSettingsValues();
-    renderThumbs();
-    queuePages(state.pages.filter((p) => !p.analysis));
-    renderPreview();
+    loadProjectData(JSON.parse(res.data));
     toast("Wczytano sprawdzian.");
   } catch {
     toast("To nie jest poprawny plik sprawdzianu.", true);
@@ -1987,7 +2002,8 @@ function syncUi() {
 }
 
 async function newTest() {
-  if (state.test && state.test.questions.length && !(await window.api.confirm("Zacząć nowy sprawdzian?", "Obecny sprawdzian zniknie z podglądu. Jeśli chcesz go zachować, najpierw zapisz go (Plik → Zapisz).", "Nowy sprawdzian"))) return;
+  if (state.test && state.test.questions.length && !(await window.api.confirm("Zacząć nowy sprawdzian?", "Obecny sprawdzian zniknie z podglądu – zostaje w Bibliotece sprawdzianów (Plik → Biblioteka).", "Nowy sprawdzian"))) return;
+  if (typeof flushLibrary === "function") await flushLibrary();
   state.test = null;
   state.view = "test";
   state.keyUnlocked = false;

@@ -47,10 +47,10 @@ function answerText(q) {
 }
 
 // ================== powtórka błędów ==================
-function wrongQuestions() {
-  if (!state.test || !state.solve.finished) return [];
-  return state.test.questions.filter((q) => {
-    const r = solveScore(q);
+function wrongQuestions(s = state.solve, t = state.test) {
+  if (!t || !s || !s.finished) return [];
+  return t.questions.filter((q) => {
+    const r = solveScore(q, s);
     return r.score != null && r.score < q.points;
   });
 }
@@ -68,6 +68,7 @@ function retryHtml() {
   const retry = wrong.length
     ? `<div class="s-panel retry"><div><b>Powtórka błędów</b><span>Do poprawy: ${wrong.length} ${plural(wrong.length, "zadanie", "zadania", "zadań")}${ungraded ? " (zadania otwarte bez oceny nie są liczone)" : ""}. Wynik tego podejścia zostaje w historii.</span></div>
         <div class="s-panel-actions">
+          ${typeof explainButtonHtml === "function" ? explainButtonHtml() : ""}
           <button class="btn primary" data-sact="retry-ai">✨ Nowe zadania z tych zagadnień</button>
           <button class="btn" data-sact="retry-same">Rozwiąż jeszcze raz błędne</button>
         </div></div>`
@@ -122,15 +123,23 @@ async function retryAi() {
 }
 
 // ================== historia wyników ==================
+/** Zapisuje (lub aktualizuje) wynik bieżącego rozwiązania w historii. */
 async function recordHistory() {
   const t = state.test, s = state.solve;
   if (!t || !s.finished) return;
+  const entry = historyEntry(t, s);
+  await window.api.historySave(entry);
+  if (typeof afterHistory === "function") await afterHistory(entry, t, s);
+}
+
+/** Wpis historii z dowolnego rozwiązania (także ucznia z trybu klasy). */
+function historyEntry(t, s) {
   if (!s.historyId) s.historyId = newId("h");
-  const tot = solveTotals();
+  const tot = solveTotals(s, t);
   const pct = tot.openGraded ? (tot.max ? tot.total / tot.max : 0) : tot.closedMax ? tot.closed / tot.closedMax : 0;
   const byFormat = {};
   for (const q of t.questions) {
-    const r = solveScore(q);
+    const r = solveScore(q, s);
     if (r.score == null) continue;
     const f = fmtOf(q);
     byFormat[f] = byFormat[f] || { score: 0, max: 0 };
@@ -138,7 +147,7 @@ async function recordHistory() {
     byFormat[f].max += q.points;
   }
   const end = s.finishedAt || Date.now();
-  await window.api.historySave({
+  return {
     id: s.historyId,
     date: new Date(end).toISOString(),
     name: (s.name || "").trim(),
@@ -153,13 +162,15 @@ async function recordHistory() {
     pct: Math.round(pct * 1000) / 10,
     mark: tot.openGraded ? gradeFor(tot.total, tot.max) : "",
     byFormat,
-    wrong: wrongQuestions().map((q) => q.question).slice(0, 20),
+    wrong: wrongQuestions(s, t).map((q) => q.question).slice(0, 20),
     seconds: Math.max(0, Math.round((end - (s.startedAt || end)) / 1000)),
     retry: /^Powtórka – /.test(t.title),
     timeLimit: Number(state.settings.timeLimit) || 0,
     timeUp: Boolean(s.timeUp),
     remote: Boolean(s.remote),
-  });
+    mode: s.mode || (s.paper ? "paper" : "test"),
+    ...(typeof historyExtra === "function" ? historyExtra(t, s) : {}),
+  };
 }
 
 const hist = { all: [], name: "", subject: "" };
@@ -231,7 +242,7 @@ function renderHistory() {
             (e) => `<tr>
               <td>${fmtDate(e.date)}</td>
               <td>${esc(e.name || "–")}</td>
-              <td class="t">${esc(e.title)}${e.group ? ` <span class="badge">gr. ${esc(e.group)}</span>` : ""}${e.retry ? ` <span class="badge retry">powtórka</span>` : ""}${e.remote ? ` <span class="badge">tablet</span>` : ""}${e.timeUp ? ` <span class="badge retry">⏱ czas minął</span>` : ""}${e.wrong && e.wrong.length ? `<div class="muted small" title="${esc(e.wrong.join("\n"))}">błędy: ${e.wrong.length}</div>` : ""}</td>
+              <td class="t">${esc(e.title)}${e.group ? ` <span class="badge">gr. ${esc(e.group)}</span>` : ""}${e.retry ? ` <span class="badge retry">powtórka</span>` : ""}${e.remote && e.mode !== "class" ? ` <span class="badge">tablet</span>` : ""}${e.mode === "class" ? ` <span class="badge">klasa</span>` : ""}${e.mode === "paper" ? ` <span class="badge">📷 kartka</span>` : ""}${e.mode === "quiz" ? ` <span class="badge quiz">🎮 quiz · ${Number(e.quizPoints || 0).toLocaleString("pl-PL")} pkt</span>` : ""}${e.plan ? ` <span class="badge">plan nauki</span>` : ""}${e.timeUp ? ` <span class="badge retry">⏱ czas minął</span>` : ""}${e.wrong && e.wrong.length ? `<div class="muted small" title="${esc(e.wrong.join("\n"))}">błędy: ${e.wrong.length}</div>` : ""}</td>
               <td class="r">${e.openGraded ? `${e.total} / ${e.max}` : `${e.closed} / ${e.closedMax}*`}</td>
               <td class="r"><b>${Math.round(e.pct)}%</b></td>
               <td>${esc(e.mark || (e.openGraded ? "" : "otwarte bez oceny"))}</td>
@@ -473,6 +484,7 @@ async function onSolveAction(act, qid) {
     for (const [id, g] of Object.entries(s.aiGrades)) s.openPoints[id] = g.points;
     await recordHistory();
   }
+  if (act === "explain") return void (typeof explainMistakes === "function" && explainMistakes()) || false;
   if (act === "retry-same") return void retrySame() || false;
   if (act === "retry-ai") return void retryAi() || false;
   if (act === "history") return void openHistory() || false;

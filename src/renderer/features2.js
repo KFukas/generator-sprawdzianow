@@ -46,6 +46,48 @@ $("#pdf-range").addEventListener("keydown", (e) => e.key === "Enter" && $("#btn-
 
 const isPdf = (f) => f.type === "application/pdf" || /\.pdf$/i.test(f.name);
 
+async function openPdf(file) {
+  const lib = await loadPdfJs();
+  return lib.getDocument({
+    data: new Uint8Array(await file.arrayBuffer()),
+    isEvalSupported: false,
+    wasmUrl: PDF_BASE + "wasm/",
+    standardFontDataUrl: PDF_BASE + "standard_fonts/",
+    cMapUrl: PDF_BASE + "cmaps/",
+    iccUrl: PDF_BASE + "iccs/",
+  }).promise;
+}
+
+/** Strona PDF jako JPEG (dłuższy bok ok. 2200 px). */
+async function renderPdfPage(doc, p) {
+  const page = await doc.getPage(p);
+  const v1 = page.getViewport({ scale: 1 });
+  const scale = Math.min(4, 2200 / Math.max(v1.width, v1.height));
+  const vp = page.getViewport({ scale });
+  const c = document.createElement("canvas");
+  c.width = Math.round(vp.width);
+  c.height = Math.round(vp.height);
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, c.width, c.height);
+  // intent „print” – renderowanie nie czeka na odświeżenie okna (działa też, gdy program jest zminimalizowany)
+  await page.render({ canvasContext: ctx, viewport: vp, canvas: c, intent: "print" }).promise;
+  page.cleanup();
+  return new Promise((r) => c.toBlob(r, "image/jpeg", 0.9));
+}
+
+/** Wszystkie strony PDF (do limitu) jako pliki JPEG – np. skan rozwiązanej kartki. */
+async function pdfToImages(file, max = 8) {
+  const doc = await openPdf(file);
+  try {
+    const out = [];
+    for (let p = 1; p <= Math.min(doc.numPages, max); p++) out.push(new File([await renderPdfPage(doc, p)], `${file.name} – str. ${p}.jpg`, { type: "image/jpeg" }));
+    return out;
+  } finally {
+    doc.destroy();
+  }
+}
+
 /** Zamienia pliki PDF na obrazy stron (pozostałe pliki bez zmian). */
 async function expandPdfs(files) {
   if (!files.some(isPdf)) return files;
@@ -62,15 +104,7 @@ async function expandPdfs(files) {
     }
     let doc;
     try {
-      const lib = await loadPdfJs();
-      doc = await lib.getDocument({
-        data: new Uint8Array(await f.arrayBuffer()),
-        isEvalSupported: false,
-        wasmUrl: PDF_BASE + "wasm/",
-        standardFontDataUrl: PDF_BASE + "standard_fonts/",
-        cMapUrl: PDF_BASE + "cmaps/",
-        iccUrl: PDF_BASE + "iccs/",
-      }).promise;
+      doc = await openPdf(f);
     } catch (e) {
       console.error(e);
       toast(/password/i.test(String(e && e.name)) ? `Plik ${f.name} jest zabezpieczony hasłem.` : `Nie udało się otworzyć pliku ${f.name}.`, true);
@@ -88,20 +122,7 @@ async function expandPdfs(files) {
       const base = f.name.replace(/\.pdf$/i, "");
       for (const [i, p] of pages.entries()) {
         toast(`PDF „${base}”: przygotowuję stronę ${i + 1} z ${pages.length}…`, false, 60000);
-        const page = await doc.getPage(p);
-        const v1 = page.getViewport({ scale: 1 });
-        const scale = Math.min(4, 2200 / Math.max(v1.width, v1.height));
-        const vp = page.getViewport({ scale });
-        const c = document.createElement("canvas");
-        c.width = Math.round(vp.width);
-        c.height = Math.round(vp.height);
-        const ctx = c.getContext("2d");
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(0, 0, c.width, c.height);
-        await page.render({ canvasContext: ctx, viewport: vp, canvas: c }).promise;
-        const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.9));
-        out.push(new File([blob], `${base} – str. ${p}.jpg`, { type: "image/jpeg" }));
-        page.cleanup();
+        out.push(new File([await renderPdfPage(doc, p)], `${base} – str. ${p}.jpg`, { type: "image/jpeg" }));
       }
       $("#toast").classList.add("hidden");
     } catch (e) {
@@ -125,7 +146,7 @@ function timeLeft() {
 /** Przed startem odliczania – ekran „Zaczynam”. true = zadania jeszcze ukryte. */
 function solveGate() {
   const s = state.solve;
-  if (!timeLimit() || s.finished || s.timerStartedAt) return false;
+  if (!timeLimit() || s.finished || s.timerStartedAt || s.paper) return false;
   const t = state.test;
   $("#sheet-solve").innerHTML = `
     <div class="s-gate">
@@ -154,7 +175,7 @@ $("#sheet-solve").addEventListener("click", (e) => {
 
 setInterval(() => {
   const s = state.solve;
-  if (!state.test || !timeLimit() || !s.timerStartedAt || s.finished) return;
+  if (!state.test || !timeLimit() || !s.timerStartedAt || s.finished || s.paper) return;
   const left = timeLeft();
   const el = $("#s-timer");
   if (el) {
@@ -172,13 +193,14 @@ setInterval(() => {
 }, 1000);
 
 // ================== rozwiązywanie na tablecie / telefonie ==================
-let share = null; // { test, group, url }
+let share = null; // { test, group, url, kind: "test"|"quiz", audience: "single"|"class" }
+let tabletKind = "test";
 
 /** Sprawdzian dla tabletu – BEZ poprawnych odpowiedzi. */
-function studentTest() {
-  const t = state.test;
+function studentTest(t = state.test) {
   return {
     id: newId("r"),
+    mode: "test",
     title: t.title + (t.groups ? ` – grupa ${t.group}` : ""),
     subject: t.subject || state.settings.subject || "",
     timeLimit: timeLimit(),
@@ -204,32 +226,52 @@ function setTabletStatus(html) {
   $("#tablet-status").innerHTML = html;
 }
 
-async function openTablet() {
+/**
+ * Uruchamia udostępnianie: kind – „test” (sprawdzian) albo „quiz” (quiz-gra), audience – „single” albo „class”.
+ * Przy quizie klucz odpowiedzi zostaje na komputerze – tablet pyta serwer o każdą odpowiedź.
+ */
+async function startShare(kind, audience) {
+  const t = state.test;
+  const base = { requireName: audience === "class", defaultName: audience === "class" ? "" : (typeof profileName === "function" ? profileName() : "") || state.solve.name || "" };
+  let payload;
+  if (kind === "quiz") {
+    const items = buildQuizItems(t);
+    if (items.length < 3) return { ok: false, error: "Quiz potrzebuje co najmniej 3 pytań zamkniętych (ABC, prawda/fałsz, dopasowanie lub luki)." };
+    payload = { test: { id: newId("r"), mode: "quiz", title: t.title + (t.groups ? ` – grupa ${t.group}` : ""), subject: t.subject || state.settings.subject || "", items: items.map(publicQuizItem), ...base }, key: items };
+  } else payload = { test: { ...studentTest(t), ...base } };
+  const res = await window.api.remoteStart(payload);
+  if (res.ok) share = { test: t, group: t.group || null, url: res.url, kind, audience, items: payload.key || null };
+  renderShareChip();
+  return res;
+}
+
+async function openTablet(kind = tabletKind) {
   const t = state.test;
   if (!t || !t.questions.length) return toast("Najpierw wygeneruj sprawdzian.", true);
+  tabletKind = kind;
+  document.querySelectorAll("#tablet-kind button").forEach((b) => b.classList.toggle("active", b.dataset.kind === kind));
   $("#modal-tablet").classList.remove("hidden");
   $("#tablet-qr").removeAttribute("src");
   $("#tablet-url").textContent = "Uruchamiam…";
+  $("#tablet-others").innerHTML = "";
   setTabletStatus("");
-  const res = await window.api.remoteStart(studentTest());
+  const res = await startShare(kind, "single");
   if (!res.ok) {
     $("#tablet-url").textContent = "";
     setTabletStatus(`<span class="err">${esc(res.error)}</span>`);
     return;
   }
-  share = { test: t, group: t.group || null, url: res.url };
   $("#tablet-qr").src = res.qr;
   $("#tablet-url").textContent = res.url;
   $("#tablet-others").innerHTML = res.others.length ? `Jeśli tablet nie otwiera strony, spróbuj: ${res.others.map((u) => `<code>${esc(u)}</code>`).join(" ")}` : "";
-  setTabletStatus(`<span class="spinner small"></span> Czekam, aż tablet otworzy sprawdzian…`);
-  renderShareChip();
+  setTabletStatus(`<span class="spinner small"></span> Czekam, aż tablet otworzy ${kind === "quiz" ? "quiz" : "sprawdzian"}…`);
 }
 
 function renderShareChip() {
   const slot = $("#tablet-slot");
   if (!slot) return;
   slot.innerHTML = state.test && state.test.questions.length
-    ? `<button class="gadd ${share ? "live" : ""}" data-tablet="open" title="Rozwiąż na tablecie lub telefonie (Ctrl+T)"><svg class="ico"><use href="#i-phone"/></svg>${share ? "Na tablecie · aktywne" : "Na tablecie"}</button>`
+    ? `<button class="gadd ${share ? "live" : ""}" data-tablet="open" title="Rozwiąż na tablecie lub telefonie (Ctrl+T)"><svg class="ico"><use href="#i-phone"/></svg>${share ? (share.audience === "class" ? "Klasa · aktywne" : "Tablet · aktywne") : "Na tablecie"}</button>`
     : "";
 }
 
@@ -245,13 +287,23 @@ $("#btn-tablet-stop").addEventListener("click", async () => {
   toast("Zatrzymano udostępnianie na tablecie.");
 });
 $("#btn-tablet-close").addEventListener("click", () => $("#modal-tablet").classList.add("hidden"));
-$("#btn-tablet-refresh").addEventListener("click", openTablet);
+$("#btn-tablet-refresh").addEventListener("click", () => openTablet());
+$("#tablet-kind").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-kind]");
+  if (b && b.dataset.kind !== tabletKind) openTablet(b.dataset.kind);
+});
+$("#btn-tablet-class").addEventListener("click", () => {
+  $("#modal-tablet").classList.add("hidden");
+  openClass(tabletKind);
+});
 $("#modebar-extra").addEventListener("click", (e) => {
-  if (e.target.closest('[data-tablet="open"]')) openTablet();
+  if (!e.target.closest('[data-tablet="open"]')) return;
+  if (share && share.audience === "class") openClass(share.kind, true);
+  else openTablet();
 });
 
 window.api.onRemoteEvent((ev) => {
-  if (ev.type === "opened") setTabletStatus(`<span class="ok-dot"></span> Tablet otworzył sprawdzian. Czekam na odpowiedzi…`);
+  if (ev.type === "opened" && share && share.audience === "single") setTabletStatus(`<span class="ok-dot"></span> Tablet otworzył ${share.kind === "quiz" ? "quiz – gra trwa" : "sprawdzian. Czekam na odpowiedzi"}…`);
   if (ev.type === "stopped") {
     share = null;
     renderShareChip();
@@ -259,9 +311,9 @@ window.api.onRemoteEvent((ev) => {
 });
 
 /** Bezpieczne odczytanie odpowiedzi z tabletu (tylko znane zadania i typy). */
-function sanitizeAnswers(raw) {
+function sanitizeAnswers(raw, t = state.test) {
   const out = {};
-  for (const q of state.test.questions) {
+  for (const q of t.questions) {
     const a = raw[q.id];
     if (a == null) continue;
     const f = fmtOf(q);
@@ -277,6 +329,8 @@ function sanitizeAnswers(raw) {
 
 window.api.onRemoteSubmission(async (sub) => {
   try {
+    // quiz-gra i tryb klasy – obsługa w features4.js
+    if (share && (share.kind === "quiz" || share.audience === "class") && typeof onShareSubmission === "function") return window.api.remoteResult(sub.id, await onShareSubmission(sub));
     if (!share || state.test !== share.test) {
       toast("Przyszły odpowiedzi z tabletu, ale ten sprawdzian nie jest już otwarty w programie.", true);
       return window.api.remoteResult(sub.id, { error: "closed" });

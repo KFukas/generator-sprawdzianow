@@ -168,8 +168,9 @@ async function generateTest({ pages, figures, plan, settings, avoid, signal, onT
 }
 
 /** Dowolne zapytanie z odpowiedzią w JSON wg schematu (np. ocena odpowiedzi ucznia). */
-async function ask({ prompt, schema, signal }) {
-  const { data } = await run({ prompt: prompt + "\nNie uruchamiaj żadnych poleceń – odpowiedz wyłącznie danymi w wymaganym formacie.", schema, effort: "low", signal, timeoutMs: 300000 });
+async function ask({ prompt, schema, images, signal }) {
+  const intro = images && images.length ? "Załączone zdjęcia to materiał, o którym mowa niżej.\n\n" : "";
+  const { data } = await run({ prompt: intro + prompt + "\nNie uruchamiaj żadnych poleceń – odpowiedz wyłącznie danymi w wymaganym formacie.", schema, images: images || [], effort: images && images.length ? "medium" : "low", signal, timeoutMs: 420000 });
   return data;
 }
 

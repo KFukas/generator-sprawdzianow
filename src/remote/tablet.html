@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#5b5cf0" />
 <title>Sprawdzian</title>
+<link rel="stylesheet" href="quiz.css" />
+<script src="quiz.js"></script>
 <style>
   :root {
     --bg: #f3f4f9; --panel: #fff; --ink: #0f172a; --ink-2: #334155; --muted: #64748b; --line: #e2e8f0; --line-2: #cbd5e1;
@@ -73,6 +75,23 @@
 "use strict";
 const KEY = "sprawdzian:" + location.pathname;
 const LETTERS = "ABCDEFGHIJ";
+const newCid = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
+let CID = (() => {
+  try {
+    let c = localStorage.getItem(KEY + ":cid");
+    if (!c) localStorage.setItem(KEY + ":cid", (c = newCid()));
+    return c;
+  } catch (e) {
+    return newCid();
+  }
+})();
+const post = (url, body) =>
+  fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+    .then((r) => r.json())
+    .then((j) => {
+      if (!j.ok) throw new Error(j.error || "błąd");
+      return j;
+    });
 let T = null;
 let S = { name: "", answers: {}, startedAt: 0, submitted: null };
 const app = document.getElementById("app");
@@ -105,7 +124,7 @@ function answeredCount() {
 function markFor(q) {
   const r = S.submitted && S.submitted.marks ? S.submitted.marks[q.id] : undefined;
   if (r === undefined) return null;
-  if (r === null) return h("span", { class: "mark wait" }, "oceni rodzic");
+  if (r === null) return h("span", { class: "mark wait" }, T.requireName ? "oceni nauczyciel" : "oceni rodzic");
   if (r.score >= r.max) return h("span", { class: "mark ok" }, "✓ " + num(r.score) + "/" + r.max);
   return h("span", { class: "mark " + (r.score > 0 ? "part" : "bad") }, (r.score > 0 ? "½ " : "✗ ") + num(r.score) + "/" + r.max);
 }
@@ -161,13 +180,20 @@ function tick() {
 
 function render() {
   app.replaceChildren();
-  if (T.timeLimit && !S.startedAt && !S.submitted) {
+  if ((T.timeLimit || T.requireName) && !S.startedAt && !S.submitted) {
+    const err = h("p", { class: "err" });
     app.append(h("div", { class: "center" }, h("div", { class: "card" },
       h("div", { class: "muted" }, T.subject || "Sprawdzian"), h("h2", {}, T.title),
-      h("p", {}, T.questions.length + " " + plural(T.questions.length, "zadanie", "zadania", "zadań") + " · limit czasu: "), h("div", { class: "big" }, T.timeLimit + " min"),
-      h("p", { class: "muted" }, "Czas zacznie płynąć po kliknięciu „Zaczynam”. Gdy minie, odpowiedzi wyślą się same."),
+      h("p", {}, T.questions.length + " " + plural(T.questions.length, "zadanie", "zadania", "zadań") + (T.timeLimit ? " · limit czasu:" : "")),
+      T.timeLimit ? h("div", { class: "big" }, T.timeLimit + " min") : null,
+      h("p", { class: "muted" }, T.timeLimit ? "Czas zacznie płynąć po kliknięciu „Zaczynam”. Gdy minie, odpowiedzi wyślą się same." : "Wpisz swoje imię i kliknij „Zaczynam”."),
       h("input", { class: "name", placeholder: "Twoje imię", value: S.name, oninput: (e) => { S.name = e.target.value; save(); } }),
-      h("p"), h("button", { class: "btn", onclick: () => { S.startedAt = Date.now(); save(); render(); } }, "Zaczynam"))));
+      err,
+      h("button", { class: "btn", onclick: () => {
+        if (T.requireName && !String(S.name || "").trim()) return void (err.textContent = "Wpisz swoje imię.");
+        post("hello", { c: CID, name: S.name }).catch(() => {});
+        S.startedAt = Date.now(); save(); render();
+      } }, "Zaczynam"))));
     return;
   }
   if (!S.startedAt) { S.startedAt = Date.now(); save(); }
@@ -191,17 +217,18 @@ function resultCard() {
     h("div", { class: "muted" }, r.timeUp ? "⏱ Czas minął – odpowiedzi wysłane" : "Odpowiedzi wysłane ✓"),
     h("h2", {}, "Twój wynik"),
     h("div", { class: "big" }, num(r.closed) + " / " + r.closedMax + " pkt"),
-    h("p", { class: "muted" }, r.openMax ? "To wynik zadań zamkniętych. Zadania otwarte (" + r.openMax + " pkt) oceni rodzic." : r.grade ? "Ocena: " + r.grade : ""));
+    h("p", { class: "muted" }, r.openMax ? "To wynik zadań zamkniętych. Zadania otwarte (" + r.openMax + " pkt) oceni " + (T.requireName ? "nauczyciel." : "rodzic.") : r.grade ? "Ocena: " + r.grade : ""));
 }
 
 async function submit(timeUp) {
   if (S.submitted) return;
+  if (!timeUp && T.requireName && !String(S.name || "").trim()) return alert("Wpisz swoje imię na górze strony.");
   const empty = T.questions.length - answeredCount();
   if (!timeUp && empty && !confirm("Bez odpowiedzi: " + empty + " " + plural(empty, "zadanie", "zadania", "zadań") + ". Wysłać mimo to?")) return;
   const btn = document.getElementById("send");
   if (btn) { btn.disabled = true; btn.textContent = "Wysyłam…"; }
   try {
-    const res = await fetch("submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: S.name, answers: S.answers, seconds: Math.round((Date.now() - S.startedAt) / 1000), timeUp }) });
+    const res = await fetch("submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ c: CID, name: S.name, answers: S.answers, seconds: Math.round((Date.now() - S.startedAt) / 1000), timeUp }) });
     const j = await res.json();
     if (!j.ok) throw new Error(j.error || "błąd");
     S.submitted = Object.assign({ timeUp }, j.result || { closed: 0, closedMax: 0, openMax: 0, marks: {} });
@@ -214,13 +241,42 @@ async function submit(timeUp) {
   }
 }
 
-document.addEventListener("input", () => { const i = document.getElementById("info"); if (i && T) i.textContent = "Odpowiedzi: " + answeredCount() + " / " + T.questions.length; });
+function startQuiz() {
+  let game = null;
+  app.className = "";
+  const run = () => {
+    if (game) game.destroy();
+    game = QuizGame.mount(app, {
+      title: T.title,
+      items: T.items,
+      name: S.name || T.defaultName || "",
+      askName: true,
+      requireName: Boolean(T.requireName),
+      onStart: (name) => {
+        S.name = name;
+        save();
+        return post("hello", { c: CID, name });
+      },
+      check: (i, a, ms) => post("check", { c: CID, i, a, ms }).then((j) => j.result),
+      onFinish: () => post("submit", { c: CID, name: S.name }).then((j) => j.result || null),
+      allowReplay: !T.requireName,
+      onReplay: () => {
+        CID = newCid();
+        run();
+      },
+    });
+  };
+  run();
+}
+
+document.addEventListener("input", () => { const i = document.getElementById("info"); if (i && T && T.questions) i.textContent = "Odpowiedzi: " + answeredCount() + " / " + T.questions.length; });
 
 fetch("test.json").then((r) => { if (!r.ok) throw new Error(); return r.json(); }).then((t) => {
   T = t;
   document.title = t.title;
   load();
-  if (S.testId !== t.id) S = { name: S.name || "", answers: {}, startedAt: 0, submitted: null, testId: t.id };
+  if (S.testId !== t.id) S = { name: S.name || t.defaultName || "", answers: {}, startedAt: 0, submitted: null, testId: t.id };
+  if (t.mode === "quiz") return startQuiz();
   render();
 }).catch(() => {
   app.replaceChildren(h("div", { class: "center" }, h("div", { class: "card" }, h("h2", {}, "Nie można wczytać sprawdzianu"), h("p", { class: "muted" }, "Udostępnianie zostało zatrzymane albo kod QR jest nieaktualny. Poproś rodzica o nowy kod."))));

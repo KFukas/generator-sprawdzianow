@@ -7,7 +7,7 @@ const claude = require("./engines/claude");
 const ollama = require("./engines/ollama");
 const codex = require("./engines/codex");
 const geminiFactory = require("./engines/gemini");
-const { buildGradePrompt, GRADE_SCHEMA } = require("./engines/common");
+const { buildGradePrompt, GRADE_SCHEMA, buildExplainPrompt, EXPLAIN_SCHEMA, buildCardsPrompt, CARDS_SCHEMA, buildPaperPrompt, PAPER_SCHEMA } = require("./engines/common");
 const remote = require("./remote");
 
 app.setName("Generator sprawdzianów");
@@ -164,9 +164,9 @@ ipcMain.handle("remote:result", (_e, { id, result }) => {
   if (done) done(result);
   return true;
 });
-ipcMain.handle("remote:start", async (_e, test) => {
+ipcMain.handle("remote:start", async (_e, payload) => {
   try {
-    const { url, others } = await remote.start(test);
+    const { url, others } = await remote.start(payload && payload.test ? payload.test : payload, payload && payload.key);
     const qr = await require("qrcode").toDataURL(url, { margin: 1, width: 360, errorCorrectionLevel: "M", color: { dark: "#0f172a", light: "#ffffff" } });
     return { ok: true, url, others, qr };
   } catch (err) {
@@ -214,6 +214,104 @@ ipcMain.handle("history:clear", async () => {
   return true;
 });
 
+// ================== dane nauki: profile dzieci, plany nauki, fiszki ==================
+function jsonFile(name, fallback) {
+  const p = () => path.join(app.getPath("userData"), name);
+  return {
+    read() {
+      try {
+        return JSON.parse(fs.readFileSync(p(), "utf8"));
+      } catch {
+        return fallback();
+      }
+    },
+    write(v) {
+      fs.mkdirSync(path.dirname(p()), { recursive: true });
+      fs.writeFileSync(p() + ".tmp", JSON.stringify(v), "utf8");
+      fs.renameSync(p() + ".tmp", p());
+    },
+  };
+}
+const STORES = {
+  profiles: jsonFile("profile.json", () => ({ profiles: [], active: null, activity: [] })),
+  plans: jsonFile("plany.json", () => []),
+  decks: jsonFile("fiszki.json", () => ({ decks: [], progress: {} })),
+};
+ipcMain.handle("store:get", (_e, name) => (STORES[name] ? STORES[name].read() : null));
+ipcMain.handle("store:set", (_e, name, value) => {
+  if (!STORES[name] || value == null || typeof value !== "object") return false;
+  if (name === "profiles" && Array.isArray(value.activity)) value.activity = value.activity.slice(-3000);
+  STORES[name].write(value);
+  return true;
+});
+
+// ================== biblioteka sprawdzianów (zapis automatyczny) i obrazy stron ==================
+const TESTS_DIR = () => path.join(app.getPath("userData"), "sprawdziany");
+const IMG_DIR = () => path.join(app.getPath("userData"), "strony");
+const SAFE_ID = /^[a-z0-9_-]{1,64}$/i;
+const testsIndex = jsonFile(path.join("sprawdziany", "index.json"), () => []);
+
+ipcMain.handle("tests:list", () => testsIndex.read());
+ipcMain.handle("tests:save", (_e, { meta, data }) => {
+  if (!meta || !SAFE_ID.test(meta.id) || typeof data !== "string") return false;
+  fs.mkdirSync(TESTS_DIR(), { recursive: true });
+  fs.writeFileSync(path.join(TESTS_DIR(), meta.id + ".json"), data, "utf8");
+  const idx = testsIndex.read().filter((x) => x.id !== meta.id);
+  idx.push(meta);
+  testsIndex.write(idx);
+  return true;
+});
+ipcMain.handle("tests:load", (_e, id) => {
+  if (!SAFE_ID.test(id)) return null;
+  try {
+    return fs.readFileSync(path.join(TESTS_DIR(), id + ".json"), "utf8");
+  } catch {
+    return null;
+  }
+});
+ipcMain.handle("tests:delete", (_e, ids) => {
+  ids = (Array.isArray(ids) ? ids : [ids]).filter((id) => SAFE_ID.test(id));
+  for (const id of ids) fs.rmSync(path.join(TESTS_DIR(), id + ".json"), { force: true });
+  const idx = testsIndex.read().filter((x) => !ids.includes(x.id));
+  testsIndex.write(idx);
+  // obrazy stron, do których nie odwołuje się już żaden sprawdzian
+  const used = new Set(idx.flatMap((x) => x.pageHashes || []));
+  try {
+    for (const f of fs.readdirSync(IMG_DIR())) if (!used.has(f.replace(/\.jpg$/, ""))) fs.rmSync(path.join(IMG_DIR(), f), { force: true });
+  } catch {}
+  return true;
+});
+ipcMain.handle("pageimg:missing", (_e, hashes) => (hashes || []).filter((h) => SAFE_ID.test(h) && !fs.existsSync(path.join(IMG_DIR(), h + ".jpg"))));
+ipcMain.handle("pageimg:put", (_e, hash, b64) => {
+  if (!SAFE_ID.test(hash) || typeof b64 !== "string") return false;
+  fs.mkdirSync(IMG_DIR(), { recursive: true });
+  fs.writeFileSync(path.join(IMG_DIR(), hash + ".jpg"), Buffer.from(b64, "base64"));
+  return true;
+});
+ipcMain.handle("pageimg:get", (_e, hashes) =>
+  (hashes || [])
+    .filter((h) => SAFE_ID.test(h))
+    .map((h) => {
+      try {
+        return { hash: h, url: "data:image/jpeg;base64," + fs.readFileSync(path.join(IMG_DIR(), h + ".jpg")).toString("base64") };
+      } catch {
+        return { hash: h, url: null };
+      }
+    }));
+// odczyty stron z biblioteki stron (tekst) – do planu nauki i fiszek, gdy strony nie są otwarte w programie
+ipcMain.handle("library:get", (_e, hashes) => (hashes || []).map((h) => ({ hash: h, analysis: libGet(h) })));
+
+ipcMain.handle("file:saveText", async (_e, { defaultName, ext, filterName, content }) => {
+  const { canceled, filePath } = await dialog.showSaveDialog(win, {
+    title: "Zapisz plik",
+    defaultPath: path.join(app.getPath("documents"), sanitize(defaultName) + "." + ext),
+    filters: [{ name: filterName || ext.toUpperCase(), extensions: [ext] }],
+  });
+  if (canceled || !filePath) return { ok: false, canceled: true };
+  fs.writeFileSync(filePath, (ext === "csv" ? "﻿" : "") + content, "utf8");
+  return { ok: true, filePath };
+});
+
 // ================== okno ==================
 let win;
 let uiState = { view: "test", showPoints: true, showLines: true, showSummary: true, hasTest: false, busy: false };
@@ -258,7 +356,8 @@ function buildMenu() {
       label: "&Plik",
       submenu: [
         { label: "Nowy sprawdzian", accelerator: "CmdOrCtrl+N", click: act("new") },
-        { label: "Otwórz sprawdzian…", accelerator: "CmdOrCtrl+O", click: act("open") },
+        { label: "Biblioteka sprawdzianów…", accelerator: "CmdOrCtrl+B", click: act("library") },
+        { label: "Otwórz sprawdzian z pliku…", accelerator: "CmdOrCtrl+O", click: act("open") },
         { label: "Zapisz sprawdzian…", accelerator: "CmdOrCtrl+S", enabled: hasTest, click: act("save") },
         { type: "separator" },
         { label: "Materiał – strony podręcznika…", accelerator: "CmdOrCtrl+M", click: act("material") },
@@ -328,9 +427,15 @@ function buildMenu() {
           ],
         },
         { type: "separator" },
+        { label: "Profile dzieci i odznaki…", click: act("profiles") },
         { label: "Historia wyników…", accelerator: "CmdOrCtrl+H", click: act("history") },
+        { label: "Nauka: plan i fiszki…", accelerator: "CmdOrCtrl+L", click: act("learn") },
+        { type: "separator" },
+        { label: "Quiz-gra z tego sprawdzianu", accelerator: "CmdOrCtrl+J", enabled: hasTest, click: act("quiz") },
+        { label: "Sprawdź kartkę ze zdjęcia…", accelerator: "CmdOrCtrl+K", enabled: hasTest, click: act("paper") },
         { label: "Grupa B sprawdzianu…", enabled: hasTest, click: act("groupB") },
         { label: "Rozwiąż na tablecie lub telefonie…", accelerator: "CmdOrCtrl+T", enabled: hasTest, click: act("tablet") },
+        { label: "Tryb klasy – wiele tabletów…", enabled: hasTest, click: act("class") },
         { type: "separator" },
         { label: "Zmień hasło rodzica…", click: act("changePassword") },
         { type: "separator" },
@@ -613,24 +718,40 @@ ipcMain.handle("test:generate", async (event, payload) => {
   }
 });
 
-ipcMain.handle("ai:gradeOpen", async (_e, { items, settings }) => {
+/** Jedno zapytanie do silnika AI z odpowiedzią w JSON (ocena, wyjaśnienia, fiszki, odczyt kartki). */
+async function askAi({ prompt, schema, images }) {
   const id = engineId();
   const e = ENGINES[id];
-  if (!IMPL[e.kind].ask) return { ok: false, error: "Ten silnik nie obsługuje oceniania." };
-  genCtl = new AbortController();
+  if (!IMPL[e.kind].ask) return { ok: false, error: "Ten silnik nie obsługuje tej funkcji." };
+  const ctl = new AbortController();
+  genCtl = ctl;
   generating++;
   try {
-    const data = await IMPL[e.kind].ask({ prompt: buildGradePrompt(items, settings || {}), schema: GRADE_SCHEMA, engine: id, signal: genCtl.signal });
-    return { ok: true, grades: Array.isArray(data && data.grades) ? data.grades : [] };
+    return { ok: true, data: await IMPL[e.kind].ask({ prompt, schema, images, engine: id, signal: ctl.signal }) };
   } catch (err) {
-    if (genCtl && genCtl.signal.aborted) return { ok: false, error: "Anulowano." };
+    if (ctl.signal.aborted) return { ok: false, error: "Anulowano." };
     console.error(err);
     return { ok: false, error: String(err.message || err) };
   } finally {
-    genCtl = null;
+    if (genCtl === ctl) genCtl = null;
     generating--;
     pump();
   }
+}
+
+ipcMain.handle("ai:gradeOpen", async (_e, { items, settings }) => {
+  const res = await askAi({ prompt: buildGradePrompt(items, settings || {}), schema: GRADE_SCHEMA });
+  return res.ok ? { ok: true, grades: Array.isArray(res.data && res.data.grades) ? res.data.grades : [] } : res;
+});
+
+const AI_TASKS = {
+  explain: (d) => ({ prompt: buildExplainPrompt(d), schema: EXPLAIN_SCHEMA }),
+  cards: (d) => ({ prompt: buildCardsPrompt(d), schema: CARDS_SCHEMA }),
+  paper: (d) => ({ prompt: buildPaperPrompt(d), schema: PAPER_SCHEMA, images: (d.images || []).filter((x) => typeof x === "string").slice(0, 8) }),
+};
+ipcMain.handle("ai:task", async (_e, task, data) => {
+  if (!AI_TASKS[task]) return { ok: false, error: "Nieznane zadanie." };
+  return askAi(AI_TASKS[task](data || {}));
 });
 
 ipcMain.handle("test:cancel", () => {

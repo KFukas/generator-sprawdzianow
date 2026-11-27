@@ -67,4 +67,19 @@ contextBridge.exposeInMainWorld("api", {
   remoteResult: (id, result) => ipcRenderer.invoke("remote:result", { id, result }),
   onRemoteSubmission: listen("remote:submission"),
   onRemoteEvent: listen("remote:event"),
+  // zadania AI: wyjaśnienie błędów, fiszki, odczyt kartki ze zdjęcia
+  aiTask: (task, data) => ipcRenderer.invoke("ai:task", task, data),
+  // dane nauki (profile, plany, fiszki)
+  storeGet: (name) => ipcRenderer.invoke("store:get", name),
+  storeSet: (name, value) => ipcRenderer.invoke("store:set", name, value),
+  // biblioteka sprawdzianów
+  testsList: () => ipcRenderer.invoke("tests:list"),
+  testsSave: (meta, data) => ipcRenderer.invoke("tests:save", { meta, data }),
+  testsLoad: (id) => ipcRenderer.invoke("tests:load", id),
+  testsDelete: (ids) => ipcRenderer.invoke("tests:delete", ids),
+  pageImgMissing: (hashes) => ipcRenderer.invoke("pageimg:missing", hashes),
+  pageImgPut: (hash, b64) => ipcRenderer.invoke("pageimg:put", hash, b64),
+  pageImgGet: (hashes) => ipcRenderer.invoke("pageimg:get", hashes),
+  libraryGet: (hashes) => ipcRenderer.invoke("library:get", hashes),
+  saveText: (defaultName, ext, content, filterName) => ipcRenderer.invoke("file:saveText", { defaultName, ext, content, filterName }),
 });

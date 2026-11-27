@@ -6,6 +6,7 @@
         content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:" />
   <title>Generator sprawdzianów</title>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="../remote/quiz.css" />
 </head>
 <body>
   <!-- ikony (styl liniowy) -->
@@ -35,6 +36,12 @@
       <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></symbol>
       <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></symbol>
       <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></symbol>
+      <symbol id="i-library" viewBox="0 0 24 24"><path d="M4 4h4v16H4zM10 4h4v16h-4z"/><path d="m16 5 3.5-1 3 15.5-3.5 1z"/></symbol>
+      <symbol id="i-cap" viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5M22 9v6"/></symbol>
+      <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+      <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 20a7 7 0 0 1 14 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 13.5a7 7 0 0 1 4 6.5"/></symbol>
+      <symbol id="i-game" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="11" rx="5"/><path d="M7 11v3M5.5 12.5h3"/><circle cx="16" cy="11.5" r=".9"/><circle cx="18" cy="13.8" r=".9"/></symbol>
+      <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></symbol>
       <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></symbol>
     </defs>
   </svg>
@@ -54,11 +61,13 @@
       <button class="btn primary cta" id="btn-generate-top" title="Generuj sprawdzian (Ctrl+G)"><svg class="ico"><use href="#i-spark"/></svg> Generuj</button>
     </div>
     <div class="appbar-right">
+      <button class="profile-chip" id="profile-chip" title="Profile dzieci">Profil</button>
       <button class="engine-chip" id="ai-status" title="Silnik AI – kliknij, aby zmienić">Silnik AI…</button>
       <span class="divider"></span>
       <div class="filebar">
+        <button class="fbtn" id="btn-library" title="Biblioteka sprawdzianów – wszystkie zapisują się same (Ctrl+B)"><svg><use href="#i-library"/></svg><span>Biblioteka</span></button>
+        <button class="fbtn" id="btn-learn" title="Nauka: plan przed sprawdzianem i fiszki (Ctrl+L)"><svg><use href="#i-cap"/></svg><span>Nauka</span></button>
         <button class="fbtn" id="btn-history" title="Historia wyników (Ctrl+H)"><svg><use href="#i-chart"/></svg><span>Historia</span></button>
-        <button class="fbtn" id="btn-open" title="Otwórz sprawdzian (Ctrl+O)"><svg><use href="#i-open"/></svg><span>Otwórz</span></button>
         <button class="fbtn" id="btn-save" title="Zapisz sprawdzian (Ctrl+S)" disabled><svg><use href="#i-save"/></svg><span>Zapisz</span></button>
         <button class="fbtn" id="btn-print" title="Drukuj (Ctrl+P)" disabled><svg><use href="#i-print"/></svg><span>Drukuj</span></button>
         <button class="fbtn" id="btn-pdf" title="Zapisz jako PDF (Ctrl+E)" disabled><svg><use href="#i-pdf"/></svg><span>PDF</span></button>
@@ -82,7 +91,8 @@
           <button class="btn" id="empty-folder"><svg class="ico"><use href="#i-folder"/></svg> Wybierz folder</button>
           <button class="btn ghost" id="empty-settings"><svg class="ico"><use href="#i-sliders"/></svg> Ustawienia</button>
         </div>
-        <p class="muted small">Klucz odpowiedzi jest chroniony hasłem rodzica – dziecko nie zobaczy rozwiązań.</p>
+        <div id="today-card" class="today-card hidden"></div>
+        <p class="muted small">Klucz odpowiedzi jest chroniony hasłem rodzica – dziecko nie zobaczy rozwiązań. Każdy sprawdzian zapisuje się sam w Bibliotece.</p>
       </div>
     </div>
 
@@ -104,7 +114,7 @@
           <button class="tab" data-view="solve" title="Uczeń rozwiązuje na komputerze (Ctrl+3)"><svg class="ico"><use href="#i-pen"/></svg> Rozwiąż</button>
           <button class="tab" data-view="key" title="Klucz odpowiedzi – chroniony hasłem rodzica (Ctrl+2)"><svg class="ico"><use href="#i-lock"/></svg> Klucz</button>
         </div>
-        <div class="modebar-extra" id="modebar-extra"><div id="group-switch"></div><div id="tablet-slot"></div></div>
+        <div class="modebar-extra" id="modebar-extra"><div id="group-switch"></div><div id="play-slot"></div><div id="tablet-slot"></div></div>
         <div class="mode-hint" id="mode-hint"></div>
       </div>
       <div id="gen-banner" class="gen-banner no-print hidden">
@@ -325,6 +335,10 @@
   <div id="modal-tablet" class="modal hidden no-print">
     <div class="modal-box tablet-box">
       <h2>Rozwiąż na tablecie lub telefonie</h2>
+      <div class="tablet-mode">
+        <div class="segmented" id="tablet-kind"><button data-kind="test" class="active">📝 Sprawdzian</button><button data-kind="quiz">🎮 Quiz-gra</button></div>
+        <button class="btn ghost" id="btn-tablet-class" title="Wiele tabletów naraz – zestawienie wyników klasy"><svg class="ico"><use href="#i-users"/></svg> Cała klasa →</button>
+      </div>
       <div class="tablet-grid">
         <div class="tablet-qr"><img id="tablet-qr" alt="Kod QR do sprawdzianu" /></div>
         <ol class="tablet-steps">
@@ -344,6 +358,117 @@
       </div>
     </div>
   </div>
+
+  <!-- ======== BIBLIOTEKA SPRAWDZIANÓW ======== -->
+  <div id="dlg-library" class="modal hidden no-print" data-dialog>
+    <div class="window window-library">
+      <div class="window-head">
+        <div>
+          <h2>Biblioteka sprawdzianów</h2>
+          <div class="panel-sub" id="lib-info"></div>
+        </div>
+        <button class="icon-btn" data-close title="Zamknij (Esc)"><svg><use href="#i-x"/></svg></button>
+      </div>
+      <div class="window-toolbar">
+        <input type="text" id="lib-q" class="search" placeholder="Szukaj: tytuł, temat, przedmiot, treść pytań…" autocomplete="off" />
+        <select id="lib-subject" class="select"></select>
+        <label class="check" id="lib-all-wrap"><input type="checkbox" id="lib-all" /> także powtórki i kartkówki z planu</label>
+        <button class="btn" id="btn-open" style="margin-left:auto" title="Otwórz sprawdzian zapisany w pliku (Ctrl+O)"><svg class="ico"><use href="#i-open"/></svg> Otwórz z pliku…</button>
+      </div>
+      <div class="window-body" id="lib-body"></div>
+    </div>
+  </div>
+
+  <!-- ======== NAUKA: PLAN I FISZKI ======== -->
+  <div id="dlg-learn" class="modal hidden no-print" data-dialog>
+    <div class="window window-learn">
+      <div class="window-head">
+        <div>
+          <h2>Nauka</h2>
+          <div class="panel-sub">Plan nauki przed sprawdzianem i fiszki z powtórkami rozłożonymi w czasie.</div>
+        </div>
+        <button class="icon-btn" data-close title="Zamknij (Esc)"><svg><use href="#i-x"/></svg></button>
+      </div>
+      <div class="window-toolbar"><div class="segmented learn-tabs" id="learn-tabs"><button data-ltab="plan" class="active">🗓️ Plan nauki</button><button data-ltab="cards">🃏 Fiszki</button></div></div>
+      <div class="window-body" id="learn-body"></div>
+    </div>
+  </div>
+
+  <!-- ======== PROFILE DZIECI ======== -->
+  <div id="dlg-profiles" class="modal hidden no-print" data-dialog>
+    <div class="window window-profiles">
+      <div class="window-head">
+        <div>
+          <h2>Profile dzieci</h2>
+          <div class="panel-sub">Każde dziecko ma własną historię wyników, postęp fiszek, odznaki i serię dni nauki.</div>
+        </div>
+        <button class="icon-btn" data-close title="Zamknij (Esc)"><svg><use href="#i-x"/></svg></button>
+      </div>
+      <div class="window-body" id="prof-body"></div>
+      <div class="window-foot">
+        <span class="muted small">Profil wybrany u góry okna podpisuje wyniki i postęp nauki.</span>
+        <button class="btn ghost" id="btn-prof-none">Bez profilu</button>
+        <button class="btn" data-close>Zamknij</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== TRYB KLASY ======== -->
+  <div id="dlg-class" class="modal hidden no-print" data-dialog>
+    <div class="window window-class">
+      <div class="window-head">
+        <div>
+          <h2>Klasa – wiele tabletów naraz</h2>
+          <div class="panel-sub" id="class-sub"></div>
+        </div>
+        <div class="segmented" id="class-kind"><button data-kind="test">📝 Sprawdzian</button><button data-kind="quiz">🎮 Quiz-gra</button></div>
+        <button class="icon-btn" data-close title="Zamknij – udostępnianie działa dalej"><svg><use href="#i-x"/></svg></button>
+      </div>
+      <div class="window-body class-body">
+        <div class="class-side">
+          <div class="tablet-qr"><img id="class-qr" alt="Kod QR dla klasy" /></div>
+          <div class="tablet-url" id="class-url"></div>
+          <ol class="tablet-steps small-steps">
+            <li>Tablety w <b>tej samej sieci Wi-Fi</b> co komputer.</li>
+            <li>Każdy uczeń skanuje ten sam kod i wpisuje imię.</li>
+            <li>Wyniki pojawiają się tutaj na bieżąco.</li>
+          </ol>
+          <p class="muted small" id="class-others"></p>
+        </div>
+        <div class="class-main">
+          <div class="tablet-status" id="class-status"></div>
+          <div id="class-table"></div>
+          <div id="class-stats"></div>
+        </div>
+      </div>
+      <div class="window-foot">
+        <span class="muted small">Tablety nie dostają poprawnych odpowiedzi. Każdy wynik trafia też do historii.</span>
+        <button class="btn" id="btn-class-ai">✨ Oceń otwarte z AI</button>
+        <button class="btn" id="btn-class-csv"><svg class="ico"><use href="#i-save"/></svg> Zestawienie (Excel)</button>
+        <button class="btn ghost danger-text" id="btn-class-stop">Zatrzymaj</button>
+        <button class="btn primary" data-close>Zamknij (działa dalej)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== KARTKA ZE ZDJĘCIA ======== -->
+  <div id="modal-paper" class="modal hidden no-print">
+    <div class="modal-box paper-box">
+      <h2>📷 Sprawdź kartkę ze zdjęcia</h2>
+      <p>Dziecko rozwiązało wydrukowany sprawdzian? Zrób zdjęcie każdej strony (prosto, przy dobrym świetle) albo zeskanuj do PDF. AI odczyta zaznaczenia i pismo, a za zadania otwarte zaproponuje punkty. Odczyt sprawdzisz i poprawisz przed zatwierdzeniem.</p>
+      <div id="paper-group"></div>
+      <div class="paper-thumbs" id="paper-thumbs"></div>
+      <div class="muted small" id="paper-status"></div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="btn-paper-cancel">Anuluj</button>
+        <button class="btn primary" id="btn-paper-ok" disabled>Odczytaj odpowiedzi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== QUIZ-GRA I FISZKI (pełny ekran) ======== -->
+  <div id="quiz-overlay" class="hidden no-print"></div>
+  <div id="study-overlay" class="study-overlay hidden no-print"></div>
 
   <!-- ======== KADROWANIE ======== -->
   <div id="modal-crop" class="modal hidden no-print">
@@ -407,6 +532,13 @@
         <li><b>Limit czasu</b> (opcjonalny) – w Ustawieniach; odliczanie startuje po kliknięciu „Zaczynam”.</li>
         <li><b>PDF</b> – e-podręcznik lub skan w PDF dodasz jak zdjęcia; program zapyta, które strony wczytać.</li>
         <li><b>Grupa B</b> – przycisk nad kartką: druga wersja sprawdzianu (przemieszana albo z innymi zadaniami).</li>
+        <li><b>Quiz-gra</b> (przycisk „Quiz” nad kartką, Ctrl+J) – pytania po kolei na czas, punkty za szybkość i serie poprawnych odpowiedzi; także na tablecie.</li>
+        <li><b>Kartka ze zdjęcia</b> (przycisk „Kartka”, Ctrl+K) – zdjęcie wydrukowanego, rozwiązanego sprawdzianu: AI odczyta odpowiedzi i zaproponuje punkty za zadania otwarte.</li>
+        <li><b>Wyjaśnij moje błędy</b> – po zakończeniu w trybie „Rozwiąż”: AI tłumaczy każdą pomyłkę prostym językiem i podpowiada, co doczytać.</li>
+        <li><b>Tryb klasy</b> (Narzędzia → Tryb klasy) – wiele tabletów z jednym kodem, wyniki na żywo, najczęstsze błędy, zestawienie do Excela.</li>
+        <li><b>Profile dzieci</b> (przycisk „Profil” u góry) – osobna historia, odznaki i seria dni nauki dla każdego dziecka.</li>
+        <li><b>Biblioteka</b> (Ctrl+B) – każdy sprawdzian zapisuje się sam; wyszukiwanie po tytule, temacie, przedmiocie i treści pytań.</li>
+        <li><b>Nauka</b> (Ctrl+L) – plan nauki przed sprawdzianem (codzienna kartkówka i próbny sprawdzian) oraz fiszki z powtórkami.</li>
         <li><b>Silnik AI</b> (kliknij znaczek silnika u góry albo Narzędzia → Silnik AI): Claude lub Codex (płatne subskrypcje), Google Gemini (darmowy klucz) albo model lokalny (darmowy, offline).</li>
       </ol>
       <div class="modal-actions"><button class="btn primary" id="btn-help-close">Zamknij</button></div>
@@ -415,8 +547,11 @@
 
   <div id="toast" class="toast hidden no-print"></div>
 
+  <script src="../remote/quiz.js"></script>
   <script src="app.js"></script>
   <script src="features.js"></script>
   <script src="features2.js"></script>
+  <script src="features3.js"></script>
+  <script src="features4.js"></script>
 </body>
 </html>

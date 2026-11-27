@@ -129,9 +129,10 @@ function makeEngine(getKey) {
   }
 
   /** Dowolne zapytanie z odpowiedzią w JSON wg schematu (np. ocena odpowiedzi ucznia). */
-  async function ask({ prompt, schema, signal }) {
+  async function ask({ prompt, schema, images, signal }) {
     try {
-      const { data } = await generate(getKey(), { parts: [{ text: prompt }], schema, signal });
+      const parts = [...(images || []).map((b64) => ({ inlineData: { mimeType: "image/jpeg", data: b64 } })), { text: prompt }];
+      const { data } = await generate(getKey(), { parts, schema, signal });
       return data;
     } catch (e) {
       throw new Error(friendlyError(e));

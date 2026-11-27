@@ -11,6 +11,14 @@ Aplikacja dla rodziców i nauczycieli. Robisz telefonem zdjęcia stron podręczn
 - **Opcjonalny limit czasu:** odliczanie po kliknięciu „Zaczynam”; po czasie sprawdzian kończy się sam.
 - **PDF:** e-podręcznik albo skan w PDF dodasz tak jak zdjęcia – program zapyta, które strony wczytać.
 - **Grupy A i B:** druga wersja sprawdzianu dla sąsiada z ławki – przemieszana albo z innymi zadaniami.
+- **Sprawdzanie kartki ze zdjęcia:** dziecko rozwiązuje wydrukowany sprawdzian, rodzic robi zdjęcie (albo skan PDF), a AI odczytuje zaznaczenia i pismo i proponuje punkty za zadania otwarte.
+- **„Wyjaśnij moje błędy”:** po rozwiązaniu AI tłumaczy dziecku każdą pomyłkę prostym językiem i podpowiada, co doczytać.
+- **Quiz-gra:** pytania po kolei na czas, punkty za szybkość i serie poprawnych odpowiedzi – na komputerze albo na tablecie.
+- **Tryb klasy:** wiele tabletów z jednym kodem QR, wyniki i ranking quizu na żywo, najczęstsze błędy klasy, zestawienie do Excela.
+- **Profile dzieci:** osobna historia, postęp fiszek, odznaki i seria dni nauki dla każdego dziecka.
+- **Plan nauki przed sprawdzianem:** wpisujesz datę sprawdzianu, a program codziennie przygotowuje krótką kartkówkę (z naciskiem na wcześniejsze błędy), a dzień przed – próbny sprawdzian.
+- **Biblioteka sprawdzianów:** każdy sprawdzian zapisuje się sam, z wyszukiwaniem po tytule, temacie, przedmiocie i treści pytań.
+- **Fiszki z materiału:** AI wybiera pojęcia i definicje, a powtórki są rozłożone w czasie – trudne fiszki wracają częściej.
 - **Klucz odpowiedzi chroniony hasłem rodzica:** dziecko nie podejrzy rozwiązań.
 - **Podsumowanie na końcu sprawdzianu:** tabela punktów, skala ocen i miejsce na podpis rodzica.
 - **Poprawki:** każde zadanie można edytować albo podmienić na nowe.
@@ -28,9 +36,9 @@ Program działa w systemie Windows, a cały interfejs jest po polsku.
 ![Kartkówka z zadaniem ABC i ilustracją](docs/screenshots/01-sprawdzian.png)
 
 <details>
-<summary><b>Więcej zrzutów: zadania, materiał, ustawienia, rozwiązywanie, klucz</b></summary>
+<summary><b>Więcej zrzutów: zadania, rozwiązywanie, kartka ze zdjęcia, quiz, tryb klasy, plan nauki, fiszki, profile, biblioteka</b></summary>
 
-**Ekran startowy**
+**Ekran startowy – z zadaniami na dziś z planu nauki**
 
 ![Ekran startowy](docs/screenshots/00-start.png)
 
@@ -86,6 +94,49 @@ Program działa w systemie Windows, a cały interfejs jest po polsku.
   <img src="docs/screenshots/12-telefon.png" alt="Sprawdzian na telefonie" width="300" />
   <img src="docs/screenshots/13-telefon-wynik.png" alt="Wynik na telefonie" width="300" />
 </p>
+
+**Sprawdzanie kartki ze zdjęcia – AI odczytało odpowiedzi z zeskanowanej kartki (niepewne zaznacza na żółto)**
+
+![Kartka ze zdjęcia](docs/screenshots/14-kartka-ze-zdjecia.png)
+
+**„Wyjaśnij moje błędy” – wyjaśnienie dla dziecka pod zadaniem**
+
+![Wyjaśnienie błędu](docs/screenshots/15-wyjasnij-bledy.png)
+
+**Quiz-gra – pytania na czas, punkty i seria poprawnych odpowiedzi**
+
+![Quiz-gra](docs/screenshots/16-quiz.png)
+
+**Tryb klasy – ranking quizu na żywo z kilku tabletów**
+
+![Tryb klasy – quiz](docs/screenshots/17-klasa-quiz.png)
+
+**Tryb klasy – wyniki sprawdzianu i najczęstsze błędy**
+
+![Tryb klasy – sprawdzian](docs/screenshots/18-klasa-wyniki.png)
+
+**Quiz na telefonie**
+
+<p>
+  <img src="docs/screenshots/19-telefon-quiz.png" alt="Quiz na telefonie" width="300" />
+  <img src="docs/screenshots/20-telefon-quiz-koniec.png" alt="Koniec quizu na telefonie" width="300" />
+</p>
+
+**Plan nauki przed sprawdzianem**
+
+![Plan nauki](docs/screenshots/21-plan-nauki.png)
+
+**Fiszki z powtórkami rozłożonymi w czasie**
+
+![Fiszki](docs/screenshots/22-fiszki.png)
+
+**Profile dzieci i odznaki**
+
+![Profile dzieci](docs/screenshots/23-profile.png)
+
+**Biblioteka sprawdzianów**
+
+![Biblioteka](docs/screenshots/24-biblioteka.png)
 
 **Tryb ciemny**
 
@@ -148,12 +199,21 @@ Program sam wykrywa zainstalowane Claude Code, Codex i Ollamę. Klucz Gemini jes
    - Po kliknięciu „Zakończ i sprawdź” zadania zamknięte są oceniane automatycznie (✓/✗).
    - Rodzic po podaniu hasła widzi poprawne odpowiedzi i przyznaje punkty za pytania otwarte. Przycisk **„Podpowiedź oceny z AI”** proponuje punkty z krótkim komentarzem – rodzic je zatwierdza.
    - **Powtórka błędów:** „Rozwiąż jeszcze raz błędne” (te same zadania, przemieszane odpowiedzi) albo „Nowe zadania z tych zagadnień” (AI).
+   - **Wyjaśnij moje błędy:** AI tłumaczy każdą pomyłkę prostym językiem (pod zadaniem) i podpowiada, co doczytać.
    - Wynik zapisuje się w **historii wyników** (Narzędzia → Historia wyników, Ctrl+H).
 6. **🔒 Klucz** (Ctrl+2): przy pierwszym otwarciu ustawiasz hasło rodzica.
 7. **Na tablecie** (Ctrl+T albo przycisk nad kartką): pokaż kod QR i zeskanuj go tabletem lub telefonem w tej samej sieci Wi-Fi. Tablet nie dostaje poprawnych odpowiedzi – sprawdza je program; wynik trafia do historii. Przy pierwszym użyciu Windows może zapytać o dostęp do sieci – zezwól na sieci prywatne.
    - **Limit czasu** (opcjonalny): Ustawienia → „Limit czasu na rozwiązanie”. Działa w trybie „Rozwiąż” i na tablecie.
 8. **Grupa B** – przycisk nad kartką: te same zadania przemieszane albo inne zadania z tego samego materiału (AI). Grupy przełączasz nad kartką; każda ma własny klucz.
 9. **Drukuj albo PDF** (Ctrl+P, Ctrl+E).
+10. **Kartka** (przycisk nad kartką, Ctrl+K): zdjęcia albo skan PDF rozwiązanego, wydrukowanego sprawdzianu. AI odczytuje odpowiedzi; sprawdzasz odczyt (niepewne miejsca są zaznaczone), poprawiasz i klikasz „Zakończ i sprawdź”. Za zadania otwarte AI proponuje punkty.
+11. **Quiz** (przycisk nad kartką, Ctrl+J): zadania zamknięte jako gra – każde zdanie P/F, para i luka to osobne pytanie na czas. Na tablecie: w oknie „Na tablecie” wybierz „Quiz-gra”.
+12. **Tryb klasy** (Narzędzia → Tryb klasy albo „Cała klasa →” w oknie tabletu): jeden kod QR dla wszystkich tabletów. Wyniki pojawiają się na bieżąco; „Podgląd” otwiera odpowiedzi ucznia, „Oceń otwarte z AI” ocenia zadania otwarte całej klasy, „Zestawienie” zapisuje plik CSV dla Excela. W quizie – ranking na żywo.
+13. **Profil** (przycisk u góry): dodaj dzieci; wybrany profil podpisuje wyniki, ma własny postęp fiszek, odznaki i serię dni nauki.
+14. **Nauka** (Ctrl+L):
+    - **Plan nauki:** data sprawdzianu i materiał → codziennie kartkówka z kolejnej części materiału, dzień przed sprawdzianem próbny sprawdzian. Zadania na dziś widać też na ekranie startowym.
+    - **Fiszki:** AI przygotowuje zestaw z wybranych stron; oceniasz „Nie wiem / Trudne / Wiem / Łatwe”, a program planuje kolejne powtórki.
+15. **Biblioteka** (Ctrl+B): wszystkie sprawdziany zapisują się same – razem ze stronami i grafikami. Wyszukiwanie po tytule, temacie, przedmiocie i treści pytań. Plik możesz też zapisać i otworzyć ręcznie (Ctrl+S, Ctrl+O).
 
 Motyw jasny, ciemny albo systemowy: Widok → Motyw.
 
@@ -163,10 +223,11 @@ Motyw jasny, ciemny albo systemowy: Widok → Motyw.
 
 - Zdjęcia stron są wysyłane tylko do wybranego silnika AI. Wyjątek to model lokalny, przy którym nic nie opuszcza komputera.
 - Program nie ma własnego serwera i nie zbiera żadnych danych.
-- Klucz odpowiedzi, hasło (zapisane jako skrót, nie wprost), ustawienia, biblioteka stron i historia wyników są zapisywane lokalnie w `%APPDATA%\Generator sprawdzianów`.
-- Przy podpowiedzi oceny z AI do wybranego silnika trafiają pytania otwarte, wzorcowe odpowiedzi i odpowiedzi ucznia (bez imienia).
+- Klucz odpowiedzi, hasło (zapisane jako skrót, nie wprost), ustawienia, biblioteka stron, biblioteka sprawdzianów, profile dzieci, plany, fiszki i historia wyników są zapisywane lokalnie w `%APPDATA%\Generator sprawdzianów`.
+- Przy podpowiedzi oceny z AI i przy wyjaśnianiu błędów do wybranego silnika trafiają pytania, poprawne odpowiedzi i odpowiedzi ucznia (bez imienia).
+- Przy sprawdzaniu kartki ze zdjęcia do wybranego silnika trafiają zdjęcia kartki (z imieniem wpisanym przez dziecko, jeśli jest na kartce).
 - Aktualizacje są pobierane z GitHub Releases tego projektu.
-- Rozwiązywanie na tablecie działa tylko w Twojej sieci lokalnej: program uruchamia na ten czas małą stronę pod losowym, jednorazowym adresem i wyłącza ją po zatrzymaniu (najpóźniej po 3 godzinach). Nic nie przechodzi przez internet.
+- Rozwiązywanie na tablecie działa tylko w Twojej sieci lokalnej: program uruchamia na ten czas małą stronę pod losowym, jednorazowym adresem i wyłącza ją po zatrzymaniu (najpóźniej po 3 godzinach). Nic nie przechodzi przez internet. W quizie każdą odpowiedź sprawdza komputer – tablet nie dostaje klucza.
 
 ## Dla programistów
 
@@ -188,9 +249,10 @@ W Windows możesz też kliknąć dwukrotnie `Uruchom.bat`, który przy pierwszym
 | `src/engines/gemini.js` | Gemini API (`generateContent`, odpowiedź JSON wg schematu, automatyczny wybór dostępnego modelu) |
 | `src/engines/ollama.js` | model lokalny przez Ollamę |
 | `src/engines/common.js` | wspólny schemat zadań i polecenie dla AI |
-| `src/remote.js`, `src/remote/tablet.html` | rozwiązywanie na tablecie: serwer w sieci lokalnej i strona dla tabletu |
+| `src/remote.js`, `src/remote/tablet.html` | rozwiązywanie na tablecie i tryb klasy: serwer w sieci lokalnej i strona dla tabletu |
+| `src/remote/quiz.js`, `src/remote/quiz.css` | quiz-gra – wspólny silnik dla komputera i tabletu (punktacja i sprawdzanie także po stronie serwera) |
 | `src/ocr.js` | Tesseract (polski) – odcinanie podpisów z wycinków grafik |
-| `src/renderer/` | interfejs (`index.html`, `styles.css`, `app.js`, `features.js` – powtórka błędów, historia, grupy A/B, ocena AI, aktualizacje; `features2.js` – PDF, limit czasu, tablet) |
+| `src/renderer/` | interfejs (`index.html`, `styles.css`, `app.js`, `features.js` – powtórka błędów, historia, grupy A/B, ocena AI, aktualizacje; `features2.js` – PDF, limit czasu, tablet; `features3.js` – profile i odznaki, biblioteka sprawdzianów, fiszki, plan nauki; `features4.js` – quiz-gra, tryb klasy, kartka ze zdjęcia, wyjaśnianie błędów) |
 
 ## Licencja
 

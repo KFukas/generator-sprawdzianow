@@ -251,9 +251,10 @@ async function generateTest({ pages, figures, plan, settings, avoid, signal, onT
 }
 
 /** Dowolne zapytanie z odpowiedzią w JSON wg schematu (np. ocena odpowiedzi ucznia). */
-async function ask({ prompt, schema, signal }) {
-  const numPredict = 1200;
-  const res = await chat({ prompt, format: schema, numPredict, numCtx: ctxFor(prompt, numPredict), temperature: 0.1, signal });
+async function ask({ prompt, schema, images, signal }) {
+  const withImages = images && images.length;
+  const numPredict = withImages ? 2500 : 1600;
+  const res = await chat({ prompt, images: withImages ? images : undefined, format: schema, numPredict, numCtx: withImages ? 8192 : ctxFor(prompt, numPredict), temperature: 0.1, signal });
   return JSON.parse(res.content);
 }
 
