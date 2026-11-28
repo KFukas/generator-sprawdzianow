@@ -25,7 +25,7 @@ Aplikacja dla rodziców i nauczycieli. Robisz telefonem zdjęcia stron podręczn
 - **Druk i PDF:** sprawdzian i klucz drukują się osobno.
 - **Tryb ciemny** i **automatyczne aktualizacje** (nowa wersja pobiera się w tle i instaluje przy zamknięciu programu).
 
-Program działa w systemie Windows, a cały interfejs jest po polsku.
+Program działa w systemie Windows, a cały interfejs jest po polsku: spokojny, przejrzysty, z paskiem bocznym (sekcje Sprawdzian, Nauka, Biblioteka, Historia, Klasa, Profile).
 
 ## Zrzuty ekranu
 
@@ -36,13 +36,13 @@ Program działa w systemie Windows, a cały interfejs jest po polsku.
 ![Kartkówka z zadaniem ABC i ilustracją](docs/screenshots/01-sprawdzian.png)
 
 <details>
-<summary><b>Więcej zrzutów: zadania, rozwiązywanie, kartka ze zdjęcia, quiz, tryb klasy, plan nauki, fiszki, profile, biblioteka</b></summary>
+<summary><b>Więcej zrzutów: materiał i ustawienia, zadania, rozwiązywanie, kartka ze zdjęcia, quiz, tryb klasy, plan nauki, fiszki, profile, biblioteka</b></summary>
 
-**Ekran startowy – z zadaniami na dziś z planu nauki**
+**Nowy sprawdzian – materiał, ustawienia i zadania na dziś z planu nauki**
 
 ![Ekran startowy](docs/screenshots/00-start.png)
 
-**Edycja zadania – panel obok kartki: inne zadanie, kolejność, punkty, grafika**
+**Edycja zadania – narzędzia obok kartki: inne zadanie, kolejność, punkty, grafika**
 
 ![Edycja zadania](docs/screenshots/01b-edycja-zadania.png)
 
@@ -50,11 +50,11 @@ Program działa w systemie Windows, a cały interfejs jest po polsku.
 
 ![Zadania prawda/fałsz i dopasowanie](docs/screenshots/01c-prawda-falsz-dopasowanie.png)
 
-**Materiał – zdjęcia stron podręcznika, odczytane przez AI**
+**Materiał i ustawienia – strony odczytane przez AI**
 
 ![Okno Materiał](docs/screenshots/02-material.png)
 
-**Ustawienia – poziom trudności, liczba i rodzaje zadań**
+**Więcej ustawień – limit czasu, zagadnienia, wydruk**
 
 ![Okno Ustawienia](docs/screenshots/03-ustawienia.png)
 
@@ -179,41 +179,30 @@ Program sam wykrywa zainstalowane Claude Code, Codex i Ollamę. Klucz Gemini jes
 
 ## Jak używać
 
-1. **Materiał** (Ctrl+M): dodaj zdjęcia stron, plik PDF albo cały folder.
-   - AI czyta strony w tle. Przeczytane strony są zapamiętywane, więc następnym razem są gotowe od razu.
-   - Kliknięciem zaznacz strony, z których ma być sprawdzian.
-2. **Ustawienia** (Ctrl+,):
-   - rodzaj: kartkówka albo sprawdzian,
-   - poziom trudności,
-   - rodzaje zadań,
-   - liczba zadań,
-   - grafiki,
-   - klasa i przedmiot.
-3. **Generuj** (Ctrl+G).
-4. **Popraw:**
-   - Kliknij w tekst, aby go zmienić.
-   - Po najechaniu na zadanie możesz kliknąć **Inne zadanie**, zmienić punkty albo przesunąć zadanie.
-   - Grafikę można przykadrować.
-5. **Rozwiąż** (Ctrl+3): uczeń rozwiązuje sprawdzian na komputerze.
-   - Klika odpowiedzi ABC oraz P/F, wybiera litery w dopasowaniach, wpisuje wyrazy w luki i odpowiedzi na pytania otwarte.
-   - Po kliknięciu „Zakończ i sprawdź” zadania zamknięte są oceniane automatycznie (✓/✗).
-   - Rodzic po podaniu hasła widzi poprawne odpowiedzi i przyznaje punkty za pytania otwarte. Przycisk **„Podpowiedź oceny z AI”** proponuje punkty z krótkim komentarzem – rodzic je zatwierdza.
-   - **Powtórka błędów:** „Rozwiąż jeszcze raz błędne” (te same zadania, przemieszane odpowiedzi) albo „Nowe zadania z tych zagadnień” (AI).
-   - **Wyjaśnij moje błędy:** AI tłumaczy każdą pomyłkę prostym językiem (pod zadaniem) i podpowiada, co doczytać.
-   - Wynik zapisuje się w **historii wyników** (Narzędzia → Historia wyników, Ctrl+H).
-6. **🔒 Klucz** (Ctrl+2): przy pierwszym otwarciu ustawiasz hasło rodzica.
-7. **Na tablecie** (Ctrl+T albo przycisk nad kartką): pokaż kod QR i zeskanuj go tabletem lub telefonem w tej samej sieci Wi-Fi. Tablet nie dostaje poprawnych odpowiedzi – sprawdza je program; wynik trafia do historii. Przy pierwszym użyciu Windows może zapytać o dostęp do sieci – zezwól na sieci prywatne.
-   - **Limit czasu** (opcjonalny): Ustawienia → „Limit czasu na rozwiązanie”. Działa w trybie „Rozwiąż” i na tablecie.
-8. **Grupa B** – przycisk nad kartką: te same zadania przemieszane albo inne zadania z tego samego materiału (AI). Grupy przełączasz nad kartką; każda ma własny klucz.
-9. **Drukuj albo PDF** (Ctrl+P, Ctrl+E).
-10. **Kartka** (przycisk nad kartką, Ctrl+K): zdjęcia albo skan PDF rozwiązanego, wydrukowanego sprawdzianu. AI odczytuje odpowiedzi; sprawdzasz odczyt (niepewne miejsca są zaznaczone), poprawiasz i klikasz „Zakończ i sprawdź”. Za zadania otwarte AI proponuje punkty.
-11. **Quiz** (przycisk nad kartką, Ctrl+J): zadania zamknięte jako gra – każde zdanie P/F, para i luka to osobne pytanie na czas. Na tablecie: w oknie „Na tablecie” wybierz „Quiz-gra”.
-12. **Tryb klasy** (Narzędzia → Tryb klasy albo „Cała klasa →” w oknie tabletu): jeden kod QR dla wszystkich tabletów. Wyniki pojawiają się na bieżąco; „Podgląd” otwiera odpowiedzi ucznia, „Oceń otwarte z AI” ocenia zadania otwarte całej klasy, „Zestawienie” zapisuje plik CSV dla Excela. W quizie – ranking na żywo.
-13. **Profil** (przycisk u góry): dodaj dzieci; wybrany profil podpisuje wyniki, ma własny postęp fiszek, odznaki i serię dni nauki.
-14. **Nauka** (Ctrl+L):
-    - **Plan nauki:** data sprawdzianu i materiał → codziennie kartkówka z kolejnej części materiału, dzień przed sprawdzianem próbny sprawdzian. Zadania na dziś widać też na ekranie startowym.
-    - **Fiszki:** AI przygotowuje zestaw z wybranych stron; oceniasz „Nie wiem / Trudne / Wiem / Łatwe”, a program planuje kolejne powtórki.
-15. **Biblioteka** (Ctrl+B): wszystkie sprawdziany zapisują się same – razem ze stronami i grafikami. Wyszukiwanie po tytule, temacie, przedmiocie i treści pytań. Plik możesz też zapisać i otworzyć ręcznie (Ctrl+S, Ctrl+O).
+Program ma pasek boczny z sekcjami: **Sprawdzian**, **Nauka**, **Biblioteka**, **Historia wyników**, **Klasa** oraz **Profile i odznaki**. Na dole paska wybierasz profil dziecka i silnik AI.
+
+1. **Nowy sprawdzian** (sekcja „Sprawdzian”):
+   - **Materiał** – dodaj zdjęcia stron, plik PDF albo cały folder (albo przeciągnij pliki). AI czyta strony w tle i zapamiętuje je na stałe. Kliknięciem zaznaczasz strony do sprawdzianu.
+   - **Ustawienia** – rodzaj (kartkówka / sprawdzian), poziom, liczba i rodzaje zadań, grafiki, klasa i przedmiot. „Więcej ustawień”: limit czasu, zagadnienia, wydruk.
+   - **Generuj sprawdzian** (Ctrl+G).
+2. **Poprawki** – kliknij w tekst, aby go zmienić. Po najechaniu na zadanie: **Inne zadanie** (AI podmienia zadanie), kolejność, punkty, linie, grafika (kadrowanie, rozmiar), usunięcie. Do materiału i ustawień wracasz przyciskiem „Materiał i ustawienia” (Ctrl+M).
+3. Nad kartką są trzy zakładki:
+   - **Sprawdzian** – widok do druku i edycji,
+   - **Rozwiąż** (Ctrl+3) – dziecko rozwiązuje na komputerze; po „Zakończ i sprawdź” zadania zamknięte są oceniane automatycznie. Dalej: **Wyjaśnij moje błędy** (AI tłumaczy każdą pomyłkę), **powtórka błędów** (te same zadania albo nowe z AI), a po podaniu hasła rodzica – poprawne odpowiedzi i **podpowiedź oceny z AI** dla zadań otwartych,
+   - **Klucz** (Ctrl+2) – chroniony hasłem rodzica (ustawiasz je przy pierwszym otwarciu).
+4. **Drukuj** i **PDF** (Ctrl+P, Ctrl+E) – sprawdzian i klucz drukują się osobno.
+5. **Rozwiąż inaczej** (menu nad kartką):
+   - **Na tablecie lub telefonie** (Ctrl+T) – kod QR w domowej sieci Wi-Fi; sprawdzian albo quiz-gra. Tablet nie dostaje poprawnych odpowiedzi. Przy pierwszym użyciu Windows może zapytać o dostęp do sieci – zezwól na sieci prywatne.
+   - **Quiz-gra** (Ctrl+J) – zadania zamknięte jako gra na czas: każde zdanie P/F, para i luka to osobne pytanie.
+   - **Tryb klasy** – jeden kod QR dla wielu tabletów, wyniki i ranking quizu na żywo (sekcja „Klasa”). „Podgląd” otwiera odpowiedzi ucznia, „Oceń otwarte z AI” ocenia zadania otwarte całej klasy, „Zestawienie (Excel)” zapisuje plik CSV.
+   - **Sprawdź kartkę ze zdjęcia** (Ctrl+K) – zdjęcia albo skan PDF rozwiązanego wydruku; AI odczytuje odpowiedzi, sprawdzasz odczyt (niepewne miejsca są zaznaczone) i klikasz „Zakończ i sprawdź”. Za zadania otwarte AI proponuje punkty.
+6. **Menu „⋯”** nad kartką: **Grupa B** (te same zadania przemieszane albo inne z AI; grupy przełączasz nad kartką), zapis do pliku (Ctrl+S), nowy sprawdzian (Ctrl+N).
+7. **Nauka** (Ctrl+L):
+   - **Plan nauki** – data sprawdzianu i materiał → codziennie kartkówka z kolejnej części materiału, dzień przed sprawdzianem próbny sprawdzian. Zadania na dziś widać na ekranie „Nowy sprawdzian” i przy sekcji „Nauka”.
+   - **Fiszki** – AI przygotowuje zestaw z wybranych stron; oceniasz „Nie wiem / Trudne / Wiem / Łatwe”, a program planuje kolejne powtórki.
+8. **Biblioteka** (Ctrl+B) – wszystkie sprawdziany zapisują się same, razem ze stronami i grafikami. Wyszukiwanie po tytule, temacie, przedmiocie i treści pytań. Plik możesz też otworzyć ręcznie (Ctrl+O).
+9. **Historia wyników** (Ctrl+H) – wszystkie podejścia z wykresem postępów i skutecznością w rodzajach zadań.
+10. **Profile i odznaki** – osobna historia, postęp fiszek, odznaki i seria dni nauki dla każdego dziecka.
 
 Motyw jasny, ciemny albo systemowy: Widok → Motyw.
 
@@ -252,7 +241,7 @@ W Windows możesz też kliknąć dwukrotnie `Uruchom.bat`, który przy pierwszym
 | `src/remote.js`, `src/remote/tablet.html` | rozwiązywanie na tablecie i tryb klasy: serwer w sieci lokalnej i strona dla tabletu |
 | `src/remote/quiz.js`, `src/remote/quiz.css` | quiz-gra – wspólny silnik dla komputera i tabletu (punktacja i sprawdzanie także po stronie serwera) |
 | `src/ocr.js` | Tesseract (polski) – odcinanie podpisów z wycinków grafik |
-| `src/renderer/` | interfejs (`index.html`, `styles.css`, `app.js`, `features.js` – powtórka błędów, historia, grupy A/B, ocena AI, aktualizacje; `features2.js` – PDF, limit czasu, tablet; `features3.js` – profile i odznaki, biblioteka sprawdzianów, fiszki, plan nauki; `features4.js` – quiz-gra, tryb klasy, kartka ze zdjęcia, wyjaśnianie błędów) |
+| `src/renderer/` | interfejs (`index.html`, `styles.css`, `app.js`, `features.js` – powtórka błędów, historia, grupy A/B, ocena AI, aktualizacje; `features2.js` – PDF, limit czasu, tablet; `features3.js` – profile i odznaki, biblioteka sprawdzianów, fiszki, plan nauki; `features4.js` – quiz-gra, tryb klasy, kartka ze zdjęcia, wyjaśnianie błędów; `shell.js` – pasek boczny i menu) |
 
 ## Licencja
 

@@ -327,7 +327,7 @@ function createWindow() {
     minWidth: 1100,
     minHeight: 700,
     title: "Generator sprawdzianów",
-    backgroundColor: "#f3f4f9",
+    backgroundColor: "#f5f6f8",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,

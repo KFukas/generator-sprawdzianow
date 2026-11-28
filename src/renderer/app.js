@@ -358,13 +358,13 @@ async function addFiles(files) {
 const readPct = (p) => Math.min(99, Math.round((p.tokens / READ_TOKENS) * 100));
 
 function pageStatus(p) {
-  if (p.analysis) return `<span class="page-status ok">✓ przeczytana</span>`;
+  if (p.analysis) return `<span class="page-status ok"><svg class=""><use href="#i-check"/></svg> przeczytana</span>`;
   if (p.status === "reading")
     return state.ai && state.ai.kind === "ollama"
       ? `<span class="page-status busy">${p.tokens ? `czyta… ${readPct(p)}%` : "ogląda zdjęcie…"}</span>`
       : `<span class="page-status busy">AI czyta…</span>`;
   if (p.status === "queued") return `<span class="page-status wait">w kolejce</span>`;
-  if (p.status === "error") return `<span class="page-status err" data-act="retry" title="${esc(p.error || "Błąd")} – kliknij, aby spróbować ponownie">⚠ błąd – ponów</span>`;
+  if (p.status === "error") return `<span class="page-status err" data-act="retry" title="${esc(p.error || "Błąd")} – kliknij, aby spróbować ponownie"><svg class=""><use href="#i-alert"/></svg> błąd – ponów</span>`;
   if (!state.ai || !state.ai.ready) return `<span class="page-status wait">czeka na silnik AI</span>`;
   return "";
 }
@@ -406,7 +406,6 @@ function updateGenerateButton() {
   const btn = $("#btn-generate");
   const sel = state.pages.filter((p) => p.selected);
   btn.disabled = sel.length === 0 || state.generating;
-  $("#btn-generate-top").disabled = state.generating;
   btn.innerHTML = `<svg class="ico"><use href="#i-spark"/></svg> ${state.generating ? "AI pracuje…" : state.test ? "Ułóż nowy sprawdzian" : "Generuj sprawdzian"}`;
   const ai = state.ai || {};
   const unread = sel.filter((p) => !p.analysis).length;
@@ -414,7 +413,7 @@ function updateGenerateButton() {
   $("#generate-hint").textContent = !state.pages.length
     ? "Dodaj zdjęcia stron – AI przeczyta je w tle."
     : !sel.length
-      ? "Zaznacz w panelu „Materiał” strony do sprawdzianu."
+      ? "Zaznacz w Materiale strony, z których ma być sprawdzian."
       : unread
         ? `${unread} z wybranych stron czeka na przeczytanie (ok. ${fmtTime(unread * perPage)}). Możesz już kliknąć.`
         : `${sel.length} ${plural(sel.length, "strona", "strony", "stron")} · ${state.settings.count} zadań · ok. ${fmtTime(15 + state.settings.count * (ai.secPerTask || 5))}`;
@@ -508,12 +507,8 @@ async function addFolderDialog() {
 
 $("#btn-add-photos").addEventListener("click", addPhotosDialog);
 $("#btn-folder").addEventListener("click", addFolderDialog);
-$("#empty-add").addEventListener("click", () => (openDialog("dlg-material"), addPhotosDialog()));
-$("#empty-folder").addEventListener("click", () => (openDialog("dlg-material"), addFolderDialog()));
-$("#empty-settings").addEventListener("click", () => openDialog("dlg-settings"));
 $("#btn-material").addEventListener("click", () => openDialog("dlg-material"));
-$("#btn-settings").addEventListener("click", () => openDialog("dlg-settings"));
-$("#btn-generate-top").addEventListener("click", () => generate());
+$("#btn-back-test").addEventListener("click", () => closeDialog("dlg-material"));
 
 const dz = $("#dropzone");
 dz.addEventListener("click", addPhotosDialog);
@@ -613,9 +608,9 @@ async function refreshAi() {
   const s = state.ai;
   const chip = $("#ai-status");
   chip.classList.toggle("warn", !s.ready);
-  chip.innerHTML = s.ready
-    ? `<span class="dot"></span>${esc(s.label)}<svg class="ico"><use href="#i-chevron"/></svg>`
-    : `<span class="dot"></span>${{ claude: "Brak Claude Code", codex: "Brak Codex", gemini: "Brak klucza Gemini" }[s.kind] || (!s.installed ? "Brak Ollamy" : !s.server ? "Ollama nie odpowiada" : "Brak modelu")}<svg class="ico"><use href="#i-chevron"/></svg>`;
+  const label = s.ready ? esc(s.label) : { claude: "Brak Claude Code", codex: "Brak Codex", gemini: "Brak klucza Gemini" }[s.kind] || (!s.installed ? "Brak Ollamy" : !s.server ? "Ollama nie odpowiada" : "Brak modelu");
+  chip.innerHTML = `<span class="dot"></span><span class="einfo"><b>${label}</b><small>${s.ready ? "silnik AI" : "kliknij, aby skonfigurować"}</small></span><svg class="ico"><use href="#i-chevron"/></svg>`;
+  chip.title = `Silnik AI: ${s.ready ? s.label : label} – kliknij, aby zmienić`;
   updateStatusBar();
   return s.ready;
 }
@@ -635,12 +630,41 @@ window.api.onEngineChanged(async () => {
 });
 
 // ================== podokna ==================
+// Biblioteka, Nauka, Historia, Klasa i Profile to ekrany (pasek boczny), a materiał i ustawienia – ekran „Nowy sprawdzian”.
+const VIEW_OF = { "dlg-learn": "learn", "dlg-library": "library", "dlg-history": "history", "dlg-class": "class", "dlg-profiles": "profiles" };
+state.page = "test";
+state.setupOpen = false;
+
+function showView(name) {
+  document.querySelectorAll("[data-dialog]").forEach((d) => d.classList.add("hidden"));
+  state.page = name;
+  document.querySelectorAll(".view").forEach((v) => v.classList.toggle("hidden", v.dataset.view !== name));
+  document.querySelectorAll(".nav-item[data-nav]").forEach((b) => b.classList.toggle("active", b.dataset.nav === name));
+  $(".main").scrollTop = 0;
+  if (name === "test") renderPreview();
+}
+/** Ekran „Nowy sprawdzian” (materiał + ustawienia); przy otwartym sprawdzianie – z przyciskiem powrotu. */
+function showSetup(focus) {
+  state.setupOpen = true;
+  showView("test");
+  renderThumbs();
+  if (focus === "settings") $("#settings-card").scrollIntoView({ block: "start" });
+}
 function openDialog(id) {
+  if (id === "dlg-material" || id === "dlg-settings") return showSetup(id === "dlg-settings" ? "settings" : "material");
+  if (VIEW_OF[id]) return showView(VIEW_OF[id]);
   document.querySelectorAll("[data-dialog]").forEach((d) => d.id !== id && d.classList.add("hidden"));
   $("#" + id).classList.remove("hidden");
-  if (id === "dlg-material") renderThumbs();
 }
 function closeDialog(id) {
+  if (id === "dlg-material" || id === "dlg-settings") {
+    state.setupOpen = false;
+    return renderPreview();
+  }
+  if (VIEW_OF[id]) {
+    if (state.page === VIEW_OF[id]) showView("test");
+    return;
+  }
   $("#" + id).classList.add("hidden");
 }
 document.querySelectorAll("[data-dialog]").forEach((dlg) => {
@@ -945,7 +969,9 @@ async function generate(opts = {}) {
   }
   document.querySelectorAll("[data-dialog]").forEach((d) => d.classList.add("hidden"));
   if (!(await refreshAi())) return openAiSetup();
-  if (typeof flushLibrary === "function") await flushLibrary(); // poprzedni sprawdzian zostaje w bibliotece
+  if (typeof flushLibrary === "function") await flushLibrary();
+  state.setupOpen = false;
+  if (state.page !== "test") showView("test"); // poprzedni sprawdzian zostaje w bibliotece
   if (sel.length > 8) toast(`Wybrano ${sel.length} stron – sprawdzian obejmie skrócony tekst każdej z nich. Dla lepszych pytań wybierz 2–6 stron.`, false, 7000);
 
   state.generating = true;
@@ -1027,7 +1053,10 @@ async function generate(opts = {}) {
     state.generating = false;
     showProgress(false);
     showGenBanner(false);
-    if (!state.test) $("#empty-state").classList.remove("hidden");
+    if (!state.test) {
+      state.setupOpen = false;
+      $("#empty-state").classList.remove("hidden");
+    }
     else renderPreview();
     updateGenerateButton();
   }
@@ -1193,8 +1222,11 @@ function renderSummaryKey(t, total) {
 
 function renderPreview() {
   const t = state.test;
-  $("#preview").classList.toggle("hidden", !t);
-  $("#empty-state").classList.toggle("hidden", Boolean(t));
+  const setup = !t || state.setupOpen;
+  $("#preview").classList.toggle("hidden", setup);
+  $("#empty-state").classList.toggle("hidden", !setup);
+  $("#btn-back-test").classList.toggle("hidden", !t);
+  $("#empty-state h1").textContent = t ? "Materiał i ustawienia" : "Nowy sprawdzian";
   syncChrome();
   if (!t) return;
   if (typeof renderGroupSwitch === "function") renderGroupSwitch();
@@ -1334,7 +1366,7 @@ function renderQuestion(q, i) {
 
   return `
     <section class="q q-${f} ${q.swapping ? "swapping" : ""}" data-qid="${q.id}">
-      ${q.swapping ? `<div class="swap-note no-print">🔄 AI układa nowe zadanie…</div>` : ""}
+      ${q.swapping ? `<div class="swap-note no-print"><span class="spinner small"></span> AI układa nowe zadanie…</div>` : ""}
       <div class="tools q-tools">
         <button data-act="q-swap" class="accent wide" title="Zamień na inne zadanie z tych stron"><svg class="ico"><use href="#i-rotate"/></svg>Inne zadanie</button>
         <div class="tg"><span class="tl">Kolejność</span><button data-act="q-up" class="sq" title="Przesuń wyżej" ${i === 0 ? "disabled" : ""}><svg class="ico"><use href="#i-up"/></svg></button><button data-act="q-down" class="sq" title="Przesuń niżej" ${i === state.test.questions.length - 1 ? "disabled" : ""}><svg class="ico"><use href="#i-down"/></svg></button></div>
@@ -1450,7 +1482,7 @@ document.querySelector(".sheets").addEventListener("click", async (e) => {
       q.answer_lines = Math.min(15, q.answer_lines + 1);
       break;
     case "fig-add": {
-      if (!state.pages.length) return toast("Brak zdjęć stron – dodaj je w panelu po lewej.", true);
+      if (!state.pages.length) return toast("Brak zdjęć stron – dodaj je w „Materiał i ustawienia”.", true);
       const result = await openCropper(null);
       if (!result) return;
       q.figures.push({ id: newId("f"), description: "", scale: 1, ...result });
@@ -1656,7 +1688,7 @@ function renderSolve() {
               ${tot.openGraded ? `<div class="sum"><span>Ocena</span><b>${esc(gradeFor(tot.total, tot.max))}</b></div>` : ""}
             </div>
             <div class="s-actions">
-              ${s.revealed ? `<span class="muted small">Poprawne odpowiedzi są zaznaczone na zielono. Wpisz punkty za zadania otwarte${tot.openMax ? " albo poproś AI o podpowiedź" : ""}.</span>${tot.openMax ? `<button class="btn" data-sact="ai-grade">✨ Podpowiedź oceny z AI</button>` : ""}` : `<button class="btn primary" data-sact="reveal">🔒 Pokaż odpowiedzi i oceń (hasło rodzica)</button>`}
+              ${s.revealed ? `<span class="muted small">Poprawne odpowiedzi są zaznaczone na zielono. Wpisz punkty za zadania otwarte${tot.openMax ? " albo poproś AI o podpowiedź" : ""}.</span>${tot.openMax ? `<button class="btn" data-sact="ai-grade"><svg class="ico"><use href="#i-spark"/></svg> Podpowiedź oceny z AI</button>` : ""}` : `<button class="btn primary" data-sact="reveal"><svg class="ico"><use href="#i-lock"/></svg> Pokaż odpowiedzi i oceń (hasło rodzica)</button>`}
               <button class="btn" data-sact="reset">Rozwiąż od nowa</button>
             </div>
             ${typeof retryHtml === "function" ? retryHtml() : ""}
@@ -1728,7 +1760,7 @@ let passMode = "verify";
 function setPassMode(mode) {
   passMode = mode;
   const set = mode === "set", change = mode === "change";
-  $("#pass-title").textContent = set ? "🔒 Ustaw hasło rodzica" : change ? "🔒 Zmiana hasła rodzica" : "🔒 Klucz odpowiedzi";
+  $("#pass-title").textContent = set ? "Ustaw hasło rodzica" : change ? "Zmiana hasła rodzica" : "Klucz odpowiedzi";
   $("#pass-info").textContent = set
     ? "Klucz odpowiedzi będzie chroniony hasłem, żeby dziecko nie podejrzało rozwiązań. Zapamiętaj je – będzie potrzebne przy każdym otwarciu klucza."
     : change
@@ -1856,7 +1888,8 @@ function loadProjectData(data) {
   bindSettingsValues();
   renderThumbs();
   queuePages(state.pages.filter((p) => !p.analysis));
-  renderPreview();
+  state.setupOpen = false;
+  showView("test"); // otwarty sprawdzian zawsze na ekranie „Sprawdzian” (także z Biblioteki)
 }
 
 $("#btn-open").addEventListener("click", async () => {
@@ -2068,6 +2101,7 @@ window.api.onMenu(async (action, arg) => {
 });
 
 $("#btn-help-close").addEventListener("click", () => $("#modal-help").classList.add("hidden"));
+$("#btn-help").addEventListener("click", () => $("#modal-help").classList.remove("hidden"));
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   $("#modal-help").classList.add("hidden");

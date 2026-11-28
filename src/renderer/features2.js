@@ -150,7 +150,7 @@ function solveGate() {
   const t = state.test;
   $("#sheet-solve").innerHTML = `
     <div class="s-gate">
-      <div class="empty-icon"><svg><use href="#i-clock"/></svg></div>
+      <div class="gate-ico"><svg><use href="#i-clock"/></svg></div>
       <h1>${esc(t.title)}</h1>
       <p>${t.questions.length} ${plural(t.questions.length, "zadanie", "zadania", "zadań")} · limit czasu</p>
       <div class="s-gate-time">${timeLimit()} min</div>
@@ -163,8 +163,8 @@ function solveGate() {
 
 function timerHtml() {
   const left = timeLeft();
-  if (left == null || state.solve.finished) return state.solve.timeUp ? `<div class="s-timer up">⏱ Czas minął – sprawdzian zakończył się automatycznie.</div>` : "";
-  return `<div class="s-timer ${left <= 60 ? "low" : ""}" id="s-timer">⏱ Zostało ${mmss(left)}</div>`;
+  if (left == null || state.solve.finished) return state.solve.timeUp ? `<div class="s-timer up"><svg><use href="#i-clock"/></svg> Czas minął – sprawdzian zakończył się automatycznie.</div>` : "";
+  return `<div class="s-timer ${left <= 60 ? "low" : ""}" id="s-timer"><svg><use href="#i-clock"/></svg><span>Zostało ${mmss(left)}</span></div>`;
 }
 
 $("#sheet-solve").addEventListener("click", (e) => {
@@ -179,7 +179,7 @@ setInterval(() => {
   const left = timeLeft();
   const el = $("#s-timer");
   if (el) {
-    el.textContent = `⏱ Zostało ${mmss(left)}`;
+    el.querySelector("span").textContent = `Zostało ${mmss(left)}`;
     el.classList.toggle("low", left <= 60);
   }
   if (left <= 0) {
@@ -188,7 +188,7 @@ setInterval(() => {
     s.finishedAt = Date.now();
     recordHistory();
     if (state.view === "solve") renderSolveKeepScroll();
-    toast("⏱ Czas minął – sprawdzian zakończył się automatycznie.", false, 7000);
+    toast("Czas minął – sprawdzian zakończył się automatycznie.", false, 7000);
   }
 }, 1000);
 
@@ -270,9 +270,12 @@ async function openTablet(kind = tabletKind) {
 function renderShareChip() {
   const slot = $("#tablet-slot");
   if (!slot) return;
-  slot.innerHTML = state.test && state.test.questions.length
-    ? `<button class="gadd ${share ? "live" : ""}" data-tablet="open" title="Rozwiąż na tablecie lub telefonie (Ctrl+T)"><svg class="ico"><use href="#i-phone"/></svg>${share ? (share.audience === "class" ? "Klasa · aktywne" : "Tablet · aktywne") : "Na tablecie"}</button>`
+  // wskaźnik aktywnego udostępniania (samo uruchamianie jest w menu „Rozwiąż inaczej”)
+  slot.innerHTML = share
+    ? `<button class="gadd live" data-tablet="open" title="Udostępnianie działa – kliknij, aby zobaczyć kod i wyniki">${share.audience === "class" ? "Klasa na żywo" : share.kind === "quiz" ? "Quiz na tablecie" : "Tablet połączony"}</button>`
     : "";
+  const live = $("#nav-class-live");
+  if (live) live.classList.toggle("hidden", !(share && share.audience === "class"));
 }
 
 async function stopShare() {
@@ -366,7 +369,7 @@ window.api.onRemoteSubmission(async (sub) => {
     $(".main").scrollTop = $(".main").scrollHeight;
     const who = sub.name ? sub.name : "Uczeń";
     setTabletStatus(`<span class="ok-dot"></span> <b>${esc(who)}</b> przesłał(a) odpowiedzi: ${String(tot.closed).replace(".", ",")} / ${tot.closedMax} pkt za zadania zamknięte${tot.openMax ? " + zadania otwarte do oceny" : ""}.`);
-    toast(`📱 ${who}: odpowiedzi z tabletu – ${String(tot.closed).replace(".", ",")} / ${tot.closedMax} pkt za zadania zamknięte.${tot.openMax ? " Oceń zadania otwarte." : ""}`, false, 9000);
+    toast(`${who}: odpowiedzi z tabletu – ${String(tot.closed).replace(".", ",")} / ${tot.closedMax} pkt za zadania zamknięte.${tot.openMax ? " Oceń zadania otwarte." : ""}`, false, 9000);
   } catch (e) {
     console.error(e);
     window.api.remoteResult(sub.id, { error: "internal" });

@@ -57,8 +57,9 @@ async function pagesByHash(hashes) {
 }
 
 // ================== profile dzieci ==================
-const AVATARS = ["🦊", "🐼", "🐯", "🦁", "🐸", "🐵", "🐧", "🦄", "🐙", "🐢", "🐝", "🦉", "🐨", "🐰", "🐻", "🐲", "🐬", "🦖"];
-const PCOLORS = ["#6366f1", "#0ea5e9", "#10b981", "#f59e0b", "#ef4444", "#ec4899", "#8b5cf6", "#14b8a6"];
+const PCOLORS = ["#1e3a8a", "#0e7490", "#15803d", "#b45309", "#b91c1c", "#be185d", "#6d28d9", "#334155"];
+const initials = (name) => String(name || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";
+const avatarHtml = (p, cls = "") => `<span class="avatar ${cls}" style="background:${esc(p.color || PCOLORS[0])}">${esc(initials(p.name))}</span>`;
 let prof = { profiles: [], active: null, activity: [] };
 const activeProfile = () => prof.profiles.find((p) => p.id === prof.active) || null;
 function profileName() {
@@ -89,19 +90,19 @@ function historyExtra(t, s) {
 }
 
 const BADGES = [
-  { id: "first", icon: "🎯", name: "Pierwszy krok", desc: "Rozwiąż pierwszy sprawdzian albo quiz.", ok: (s) => s.attempts >= 1 },
-  { id: "ten", icon: "📚", name: "Pilny uczeń", desc: "10 rozwiązanych sprawdzianów lub quizów.", ok: (s) => s.attempts >= 10, prog: (s) => [s.attempts, 10] },
-  { id: "fifty", icon: "🏛️", name: "Mol książkowy", desc: "50 rozwiązanych sprawdzianów lub quizów.", ok: (s) => s.attempts >= 50, prog: (s) => [s.attempts, 50] },
-  { id: "five", icon: "⭐", name: "Piątka!", desc: "Co najmniej 90% punktów w sprawdzianie.", ok: (s) => s.best >= 90 },
-  { id: "perfect", icon: "💯", name: "Bez błędów", desc: "Sprawdzian na 100%.", ok: (s) => s.perfect >= 1 },
-  { id: "streak3", icon: "🔥", name: "Trzy dni z rzędu", desc: "Ucz się 3 dni pod rząd.", ok: (s) => s.bestStreak >= 3, prog: (s) => [s.streak, 3] },
-  { id: "streak7", icon: "🌟", name: "Tydzień nauki", desc: "Ucz się 7 dni pod rząd.", ok: (s) => s.bestStreak >= 7, prog: (s) => [s.streak, 7] },
-  { id: "comeback", icon: "💪", name: "Nie poddaję się", desc: "Rozwiąż powtórkę błędów.", ok: (s) => s.retries >= 1 },
-  { id: "gamer", icon: "🎮", name: "Gracz", desc: "Zagraj w quiz-grę.", ok: (s) => s.quizzes >= 1 },
-  { id: "combo", icon: "⚡", name: "Błyskawica", desc: "Seria 5 dobrych odpowiedzi w quizie.", ok: (s) => s.bestCombo >= 5 },
-  { id: "cards", icon: "🃏", name: "Fiszkomaniak", desc: "5 sesji z fiszkami.", ok: (s) => s.cardSessions >= 5, prog: (s) => [s.cardSessions, 5] },
-  { id: "plan", icon: "🗓️", name: "Plan wykonany", desc: "Zalicz wszystkie dni planu nauki.", ok: (s) => s.plansDone >= 1 },
-  { id: "early", icon: "🐦", name: "Ranny ptaszek", desc: "Ucz się przed ósmą rano.", ok: (s) => s.early },
+  { id: "first", icon: "target", name: "Pierwszy krok", desc: "Rozwiąż pierwszy sprawdzian albo quiz.", ok: (s) => s.attempts >= 1 },
+  { id: "ten", icon: "book", name: "Pilny uczeń", desc: "10 rozwiązanych sprawdzianów lub quizów.", ok: (s) => s.attempts >= 10, prog: (s) => [s.attempts, 10] },
+  { id: "fifty", icon: "library", name: "Mol książkowy", desc: "50 rozwiązanych sprawdzianów lub quizów.", ok: (s) => s.attempts >= 50, prog: (s) => [s.attempts, 50] },
+  { id: "five", icon: "star", name: "Piątka!", desc: "Co najmniej 90% punktów w sprawdzianie.", ok: (s) => s.best >= 90 },
+  { id: "perfect", icon: "check-circle", name: "Bez błędów", desc: "Sprawdzian na 100%.", ok: (s) => s.perfect >= 1 },
+  { id: "streak3", icon: "flame", name: "Trzy dni z rzędu", desc: "Ucz się 3 dni pod rząd.", ok: (s) => s.bestStreak >= 3, prog: (s) => [s.streak, 3] },
+  { id: "streak7", icon: "medal", name: "Tydzień nauki", desc: "Ucz się 7 dni pod rząd.", ok: (s) => s.bestStreak >= 7, prog: (s) => [s.streak, 7] },
+  { id: "comeback", icon: "repeat", name: "Nie poddaję się", desc: "Rozwiąż powtórkę błędów.", ok: (s) => s.retries >= 1 },
+  { id: "gamer", icon: "game", name: "Gracz", desc: "Zagraj w quiz-grę.", ok: (s) => s.quizzes >= 1 },
+  { id: "combo", icon: "bolt", name: "Błyskawica", desc: "Seria 5 dobrych odpowiedzi w quizie.", ok: (s) => s.bestCombo >= 5 },
+  { id: "cards", icon: "cards", name: "Fiszkomaniak", desc: "5 sesji z fiszkami.", ok: (s) => s.cardSessions >= 5, prog: (s) => [s.cardSessions, 5] },
+  { id: "plan", icon: "calendar", name: "Plan wykonany", desc: "Zalicz wszystkie dni planu nauki.", ok: (s) => s.plansDone >= 1 },
+  { id: "early", icon: "sunrise", name: "Ranny ptaszek", desc: "Ucz się przed ósmą rano.", ok: (s) => s.early },
 ];
 
 function profileStats(p, hist) {
@@ -156,7 +157,7 @@ async function checkBadges() {
   if (fresh.length) {
     await saveProfiles();
     const f = fresh[0];
-    toast(`🏅 ${f.p.avatar} ${f.p.name} – nowa odznaka: ${f.b.icon} ${f.b.name}!${fresh.length > 1 ? ` (i ${fresh.length - 1} więcej)` : ""}`, false, 8000);
+    toast(`${f.p.name} zdobywa odznakę „${f.b.name}”${fresh.length > 1 ? ` (i ${fresh.length - 1} więcej)` : ""}. Gratulacje!`, false, 8000);
   }
   renderProfileChip();
 }
@@ -165,8 +166,8 @@ function renderProfileChip() {
   const p = activeProfile();
   const chip = $("#profile-chip");
   chip.innerHTML = p
-    ? `<span class="avatar" style="background:${esc(p.color)}">${esc(p.avatar)}</span><span class="pname">${esc(p.name)}</span><svg class="ico"><use href="#i-chevron"/></svg>`
-    : `<span class="avatar empty"><svg><use href="#i-user"/></svg></span><span class="pname">Profil</span><svg class="ico"><use href="#i-chevron"/></svg>`;
+    ? `${avatarHtml(p)}<span class="pinfo"><b>${esc(p.name)}</b><small>profil dziecka</small></span><svg class="ico"><use href="#i-chevron"/></svg>`
+    : `<span class="avatar empty"><svg><use href="#i-user"/></svg></span><span class="pinfo"><b>Bez profilu</b><small>wybierz dziecko</small></span><svg class="ico"><use href="#i-chevron"/></svg>`;
   chip.title = p ? `Profil: ${p.name} – kliknij, aby zmienić` : "Profile dzieci – osobna historia, odznaki i seria dni nauki";
 }
 
@@ -181,12 +182,10 @@ async function renderProfiles() {
   const hist = await window.api.historyList();
   const ed = profUi.editing;
   const editorFor = (p) => {
-    const cur = p || { name: "", avatar: AVATARS[prof.profiles.length % AVATARS.length], color: PCOLORS[prof.profiles.length % PCOLORS.length] };
+    const cur = p || { name: "", color: PCOLORS[prof.profiles.length % PCOLORS.length] };
     return `<div class="prof-editor" data-pid="${p ? esc(p.id) : ""}">
       <label class="field-label">Imię dziecka</label>
       <input type="text" id="prof-name" value="${esc(cur.name)}" maxlength="30" placeholder="np. Ola" />
-      <label class="field-label">Awatar</label>
-      <div class="avatar-grid">${AVATARS.map((a) => `<button class="${a === cur.avatar ? "active" : ""}" data-avatar="${a}">${a}</button>`).join("")}</div>
       <label class="field-label">Kolor</label>
       <div class="color-grid">${PCOLORS.map((c) => `<button class="${c === cur.color ? "active" : ""}" data-color="${c}" style="background:${c}"></button>`).join("")}</div>
       <div class="modal-actions"><button class="btn ghost" data-pact="cancel">Anuluj</button><button class="btn primary" data-pact="save">Zapisz</button></div>
@@ -199,10 +198,10 @@ async function renderProfiles() {
       const earned = BADGES.filter((b) => (p.badges || []).includes(b.id) || b.ok(st));
       const active = p.id === prof.active;
       return `<div class="prof-card ${active ? "active" : ""}">
-        <div class="prof-top"><span class="avatar big" style="background:${esc(p.color)}">${esc(p.avatar)}</span>
-          <div><b>${esc(p.name)}</b><div class="streak ${st.streak ? "on" : ""}">${st.streak ? `🔥 ${st.streak} ${plural(st.streak, "dzień", "dni", "dni")} z rzędu${st.learnedToday ? "" : " – ucz się dziś, by nie przerwać!"}` : "Zacznij serię nauki już dziś"}</div></div></div>
+        <div class="prof-top">${avatarHtml(p, "big")}
+          <div><b>${esc(p.name)}</b><div class="streak ${st.streak ? "on" : ""}">${st.streak ? `<svg><use href="#i-flame"/></svg> ${st.streak} ${plural(st.streak, "dzień", "dni", "dni")} nauki z rzędu${st.learnedToday ? "" : " – ucz się dziś, by nie przerwać"}` : "Seria nauki: zacznij już dziś"}</div></div></div>
         <div class="prof-stats"><span><b>${st.attempts}</b> podejść</span><span><b>${st.attempts ? pct(st.avg) : "–"}</b> średnio</span><span><b>${earned.length}</b> / ${BADGES.length} odznak</span></div>
-        <div class="badge-row">${earned.map((b) => `<span title="${esc(b.name)} – ${esc(b.desc)}">${b.icon}</span>`).join("") || `<span class="muted small">Pierwsza odznaka czeka – rozwiąż sprawdzian!</span>`}</div>
+        <div class="badge-row">${earned.map((b) => `<span class="bi-s" title="${esc(b.name)} – ${esc(b.desc)}"><svg><use href="#i-${b.icon}"/></svg></span>`).join("") || `<span class="muted small">Pierwsza odznaka czeka – rozwiąż sprawdzian.</span>`}</div>
         <div class="prof-actions">
           ${active ? `<span class="tag active">aktywny</span>` : `<button class="btn primary" data-pact="use" data-pid="${esc(p.id)}">Wybierz</button>`}
           <button class="btn ghost" data-pact="edit" data-pid="${esc(p.id)}">Edytuj</button>
@@ -216,11 +215,11 @@ async function renderProfiles() {
   let badges = "";
   if (ap) {
     const st = profileStats(ap, hist);
-    badges = `<div class="hist-card"><div class="hist-card-head"><b>Odznaki – ${esc(ap.avatar)} ${esc(ap.name)}</b><span class="muted small">zdobywane za regularną naukę i dobre wyniki</span></div>
+    badges = `<div class="hist-card"><div class="hist-card-head"><b>Odznaki – ${esc(ap.name)}</b><span class="muted small">zdobywane za regularną naukę i dobre wyniki</span></div>
       <div class="badge-grid">${BADGES.map((b) => {
         const got = (ap.badges || []).includes(b.id) || b.ok(st);
         const pr = !got && b.prog ? b.prog(st) : null;
-        return `<div class="badge-item ${got ? "got" : ""}"><span class="bi">${b.icon}</span><div><b>${esc(b.name)}</b><span>${esc(b.desc)}</span>${pr ? `<div class="mini-bar"><div style="width:${Math.min(100, (pr[0] / pr[1]) * 100)}%"></div></div><span class="muted small">${Math.min(pr[0], pr[1])} / ${pr[1]}</span>` : ""}</div></div>`;
+        return `<div class="badge-item ${got ? "got" : ""}"><span class="bi"><svg><use href="#i-${b.icon}"/></svg></span><div><b>${esc(b.name)}</b><span>${esc(b.desc)}</span>${pr ? `<div class="mini-bar"><div style="width:${Math.min(100, (pr[0] / pr[1]) * 100)}%"></div></div><span class="muted small">${Math.min(pr[0], pr[1])} / ${pr[1]}</span>` : ""}</div></div>`;
       }).join("")}</div></div>`;
   }
   $("#prof-body").innerHTML = `<div class="prof-grid">${cards}${add}</div>${badges}`;
@@ -259,12 +258,11 @@ $("#prof-body").addEventListener("click", async (e) => {
     const name = $("#prof-name").value.trim();
     if (!name) return toast("Wpisz imię dziecka.", true);
     if (prof.profiles.some((x) => sameName(x.name, name) && x.id !== box.dataset.pid)) return toast("Jest już profil o tym imieniu.", true);
-    const avatar = box.querySelector("[data-avatar].active")?.dataset.avatar || AVATARS[0];
     const color = box.querySelector("[data-color].active")?.dataset.color || PCOLORS[0];
     let p = prof.profiles.find((x) => x.id === box.dataset.pid);
-    if (p) Object.assign(p, { name, avatar, color });
+    if (p) Object.assign(p, { name, color });
     else {
-      p = { id: newId("u"), name, avatar, color, badges: [], createdAt: new Date().toISOString() };
+      p = { id: newId("u"), name, color, badges: [], createdAt: new Date().toISOString() };
       prof.profiles.push(p);
       if (!prof.active) prof.active = p.id;
     }
@@ -289,7 +287,7 @@ async function setActiveProfile(id) {
   }
   if (!$("#dlg-learn").classList.contains("hidden")) renderLearn();
   renderTodayCard();
-  toast(p ? `Profil: ${p.avatar} ${p.name}` : "Bez profilu.");
+  toast(p ? `Profil: ${p.name}` : "Pracujesz bez profilu.");
 }
 $("#btn-prof-none").addEventListener("click", async () => {
   await setActiveProfile(null);
@@ -546,10 +544,10 @@ function startStudy(deckId, extra = false) {
 function renderStudy() {
   const s = study;
   const el = $("#study-overlay");
-  const head = `<div class="st-top"><div class="st-title">🃏 ${esc(s.deck.title)}${s.extra ? ` <span class="badge">dodatkowo</span>` : ""}</div><div class="st-prog">${Math.min(s.pos + 1, s.queue.length)} / ${s.queue.length}</div><button class="icon-btn st-x" data-st="close" title="Zakończ (Esc)"><svg><use href="#i-x"/></svg></button></div>`;
+  const head = `<div class="st-top"><div class="st-title"><svg><use href="#i-cards"/></svg> ${esc(s.deck.title)}${s.extra ? ` <span class="badge">dodatkowo</span>` : ""}</div><div class="st-prog">${Math.min(s.pos + 1, s.queue.length)} / ${s.queue.length}</div><button class="icon-btn st-x" data-st="close" title="Zakończ (Esc)"><svg><use href="#i-x"/></svg></button></div>`;
   if (!s.queue.length) {
     const st = deckStats(s.deck);
-    el.innerHTML = `${head}<div class="st-stage"><div class="st-done"><div class="st-emoji">✅</div><h2>Wszystko powtórzone!</h2><p class="muted">Następna powtórka: ${Number.isFinite(st.nextDue) ? fmtDay(dayKey(st.nextDue)).toLowerCase() : "–"}. Regularne krótkie powtórki działają najlepiej.</p>
+    el.innerHTML = `${head}<div class="st-stage"><div class="st-done"><div class="done-ico"><svg><use href="#i-check"/></svg></div><h2>Wszystko powtórzone</h2><p class="muted">Następna powtórka: ${Number.isFinite(st.nextDue) ? fmtDay(dayKey(st.nextDue)).toLowerCase() : "–"}. Regularne krótkie powtórki działają najlepiej.</p>
       <div class="st-actions"><button class="btn" data-st="extra">Ucz się dodatkowo</button><button class="btn primary" data-st="close">Zamknij</button></div></div></div>`;
     return;
   }
@@ -595,8 +593,8 @@ async function finishStudy() {
   if (s.seen) logActivity("fiszki", s.seen);
   await saveDecks();
   const st = deckStats(s.deck);
-  $("#study-overlay").innerHTML = `<div class="st-top"><div class="st-title">🃏 ${esc(s.deck.title)}</div><button class="icon-btn st-x" data-st="close"><svg><use href="#i-x"/></svg></button></div>
-    <div class="st-stage"><div class="st-done"><div class="st-emoji">🎉</div><h2>Sesja zakończona!</h2>
+  $("#study-overlay").innerHTML = `<div class="st-top"><div class="st-title"><svg><use href="#i-cards"/></svg> ${esc(s.deck.title)}</div><button class="icon-btn st-x" data-st="close"><svg><use href="#i-x"/></svg></button></div>
+    <div class="st-stage"><div class="st-done"><div class="done-ico"><svg><use href="#i-check"/></svg></div><h2>Sesja zakończona</h2>
       <div class="st-sum"><div><b>${s.seen}</b><span>odpowiedzi</span></div><div><b>${s.good}</b><span>wiem / łatwe</span></div><div><b>${st.learned}</b><span>opanowane fiszki</span></div></div>
       <p class="muted">${st.due ? `Do powtórki zostało jeszcze ${st.due}.` : `Następna powtórka: ${Number.isFinite(st.nextDue) ? fmtDay(dayKey(st.nextDue)).toLowerCase() : "gdy dodasz nowe fiszki"}.`}</p>
       <div class="st-actions"><button class="btn" data-st="extra">Jeszcze raz (dodatkowo)</button><button class="btn primary" data-st="close">Zamknij</button></div></div></div>`;
@@ -737,25 +735,25 @@ function planCardHtml(p) {
       const diff = daysFromToday(d.date);
       const titles = d.type === "mock" ? "cały materiał" : d.hashes.map((h) => (p.titles || {})[h]).filter(Boolean).join(", ") || "część materiału";
       const status = d.done
-        ? `<span class="plan-ok">✓ ${pct(d.pct || 0)}</span><button class="btn ghost" data-plan="start" data-pid="${esc(p.id)}" data-day="${i}">Jeszcze raz</button>`
+        ? `<span class="plan-ok"><svg><use href="#i-check"/></svg> ${pct(d.pct || 0)}</span><button class="btn ghost" data-plan="start" data-pid="${esc(p.id)}" data-day="${i}">Jeszcze raz</button>`
         : diff <= 0
           ? `<button class="btn ${diff === 0 ? "primary" : ""}" data-plan="start" data-pid="${esc(p.id)}" data-day="${i}">${diff < 0 ? "Nadrób" : "Zacznij"}</button>`
           : `<span class="muted small">czeka</span>`;
       return `<div class="plan-day ${diff === 0 ? "today" : ""} ${d.done ? "done" : ""}">
         <span class="pd-date">${fmtDay(d.date)}</span>
-        <span class="pd-what"><b>${d.type === "mock" ? "🎯 Próbny sprawdzian" : `📝 Kartkówka · ${p.perDay} zadań`}</b><small>${esc(titles)}</small></span>
+        <span class="pd-what">${d.type === "mock" ? '<svg><use href="#i-target"/></svg>' : '<svg><use href="#i-doc"/></svg>'}<span><b>${d.type === "mock" ? "Próbny sprawdzian" : `Kartkówka · ${p.perDay} zadań`}</b><small>${esc(titles)}</small></span></span>
         <span class="pd-status">${status}</span></div>`;
     })
     .join("");
   return `<div class="plan-card ${p.finished ? "finished" : ""}">
     <div class="plan-head">
-      <div><b class="plan-title">${esc(p.title)}</b><div class="muted small">${owner ? `${esc(owner.avatar)} ${esc(owner.name)} · ` : ""}sprawdzian: ${new Date(parseDay(p.examDate)).toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}${left > 0 ? ` (za ${left} ${plural(left, "dzień", "dni", "dni")})` : left === 0 ? " – dziś! Powodzenia 🍀" : ""}</div></div>
+      <div><b class="plan-title">${esc(p.title)}</b><div class="muted small">${owner ? `${esc(owner.name)} · ` : ""}sprawdzian: ${new Date(parseDay(p.examDate)).toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}${left > 0 ? ` (za ${left} ${plural(left, "dzień", "dni", "dni")})` : left === 0 ? " – dziś, powodzenia!" : ""}</div></div>
       <div class="plan-prog"><div class="mini-bar"><div style="width:${(done / p.days.length) * 100}%"></div></div><span class="muted small">${done} / ${p.days.length} dni</span></div>
       <button class="icon-btn" data-plan="delete" data-pid="${esc(p.id)}" title="Usuń plan"><svg><use href="#i-trash"/></svg></button>
     </div>
-    ${p.finished ? `<div class="s-panel good"><div><b>🎉 Plan wykonany!</b><span>Wszystkie dni zaliczone – powodzenia na sprawdzianie.</span></div></div>` : ""}
+    ${p.finished ? `<div class="s-panel good"><div><b><svg><use href="#i-check-circle"/></svg> Plan wykonany</b><span>Wszystkie dni zaliczone – powodzenia na sprawdzianie.</span></div></div>` : ""}
     ${rows}
-    ${deck ? `<div class="plan-day cards"><span class="pd-date">Codziennie</span><span class="pd-what"><b>🃏 Fiszki · ${esc(deck.title)}</b><small>${ds.today ? `${ds.today} do powtórki dziś` : "na dziś wszystko powtórzone"} · opanowane ${ds.learned} z ${ds.total}</small></span><span class="pd-status"><button class="btn ${ds.today ? "primary" : "ghost"}" data-deck="study" data-did="${esc(deck.id)}">Powtórz</button></span></div>` : ""}
+    ${deck ? `<div class="plan-day cards"><span class="pd-date">Codziennie</span><span class="pd-what"><svg><use href="#i-cards"/></svg><span><b>Fiszki · ${esc(deck.title)}</b><small>${ds.today ? `${ds.today} do powtórki dziś` : "na dziś wszystko powtórzone"} · opanowane ${ds.learned} z ${ds.total}</small></span></span><span class="pd-status"><button class="btn ${ds.today ? "primary" : "ghost"}" data-deck="study" data-did="${esc(deck.id)}">Powtórz</button></span></div>` : ""}
   </div>`;
 }
 
@@ -962,8 +960,8 @@ async function afterHistory(entry, t) {
       if (all && !plan.finished) {
         plan.finished = true;
         logActivity("plan");
-        toast("🎉 Plan nauki wykonany w całości! Powodzenia na sprawdzianie!", false, 9000);
-      } else if (first) toast(`✅ Dzień ${t.planRef.day + 1} z ${plan.days.length} planu nauki zaliczony!`, false, 6000);
+        toast("Plan nauki wykonany w całości. Powodzenia na sprawdzianie!", false, 9000);
+      } else if (first) toast(`Dzień ${t.planRef.day + 1} z ${plan.days.length} planu nauki zaliczony.`, false, 6000);
       await savePlans();
       renderTodayCard();
     }
@@ -989,11 +987,16 @@ function renderTodayCard() {
   const { plan, dueCards } = todayTasks();
   const p = activeProfile();
   const items = [
-    ...plan.slice(0, 3).map((x) => `<button class="today-item" data-today-plan="${esc(x.plan.id)}" data-day="${x.i}"><span>${x.day.type === "mock" ? "🎯" : "📝"}</span><span><b>${esc(x.plan.title)}</b><small>${x.day.type === "mock" ? "próbny sprawdzian" : "kartkówka dnia"}${daysFromToday(x.day.date) < 0 ? " · zaległa" : ""}</small></span><span class="go">Zacznij →</span></button>`),
-    dueCards ? `<button class="today-item" data-today-cards><span>🃏</span><span><b>Fiszki do powtórki</b><small>${dueCards} ${plural(dueCards, "fiszka", "fiszki", "fiszek")}</small></span><span class="go">Powtórz →</span></button>` : "",
+    ...plan.slice(0, 3).map((x) => `<button class="today-item" data-today-plan="${esc(x.plan.id)}" data-day="${x.i}"><span class="ti-ico">${x.day.type === "mock" ? '<svg><use href="#i-target"/></svg>' : '<svg><use href="#i-doc"/></svg>'}</span><span><b>${esc(x.plan.title)}</b><small>${x.day.type === "mock" ? "próbny sprawdzian" : "kartkówka dnia"}${daysFromToday(x.day.date) < 0 ? " · zaległa" : ""}</small></span><span class="go">Zacznij →</span></button>`),
+    dueCards ? `<button class="today-item" data-today-cards><span class="ti-ico"><svg><use href="#i-cards"/></svg></span><span><b>Fiszki do powtórki</b><small>${dueCards} ${plural(dueCards, "fiszka", "fiszki", "fiszek")}</small></span><span class="go">Powtórz →</span></button>` : "",
   ].filter(Boolean);
   el.classList.toggle("hidden", !items.length);
-  el.innerHTML = items.length ? `<div class="today-head">${p ? `${esc(p.avatar)} ${esc(p.name)} – ` : ""}dziś w planie nauki</div>${items.join("")}` : "";
+  el.innerHTML = items.length ? `<div class="today-head"><svg><use href="#i-calendar"/></svg> Dziś w planie nauki${p ? ` – ${esc(p.name)}` : ""}</div><div class="today-items">${items.join("")}</div>` : "";
+  const badge = $("#nav-learn-count");
+  if (badge) {
+    badge.textContent = items.length;
+    badge.classList.toggle("hidden", !items.length);
+  }
 }
 $("#today-card").addEventListener("click", (e) => {
   const pl = e.target.closest("[data-today-plan]");
@@ -1024,5 +1027,5 @@ onMenuExtra = function (action, arg) {
   renderTodayCard();
   if (!state.solve.name && profileName() && !state.solve.finished) state.solve.name = profileName();
   const { plan } = todayTasks();
-  if (plan.length) setTimeout(() => toast(`📅 Dziś w planie nauki: ${plan[0].plan.title}. Kliknij „Zacznij” na ekranie startowym albo otwórz Nauka (Ctrl+L).`, false, 8000), 1500);
+  if (plan.length) setTimeout(() => toast(`Dziś w planie nauki: ${plan[0].plan.title}. Zadanie czeka na ekranie „Nowy sprawdzian” i w sekcji Nauka.`, false, 8000), 1500);
 })();

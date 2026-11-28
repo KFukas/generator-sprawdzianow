@@ -89,6 +89,28 @@
   }
 
   const LETTERS = "ABCD";
+  // ikony liniowe (strona tabletu nie ma zestawu ikon programu)
+  const PATHS = {
+    volume: "M11 5 6 9H3v6h3l5 4zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13",
+    mute: "M11 5 6 9H3v6h3l5 4zM22 9l-6 6M16 9l6 6",
+    x: "M6 6l12 12M18 6 6 18",
+    flame: "M12 22a7 7 0 0 0 7-7c0-4-3-6-4-10-2 2-3 4-3 6-1-1-2-2-2-4-2 2-5 5-5 8a7 7 0 0 0 7 7z",
+    bolt: "M13 2 4 14h7l-1 8 9-12h-7z",
+    clock: "M12 4a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v5l3 2",
+    game: "M7 7h10a5 5 0 0 1 0 11H7A5 5 0 0 1 7 7zM7 11v3M5.5 12.5h3M16 11.5h.01M18 13.8h.01",
+    star: "m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z",
+    trophy: "M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 21h8",
+  };
+  function icon(name, cls) {
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("class", "qz-ic" + (cls ? " " + cls : ""));
+    const path = document.createElementNS(NS, "path");
+    path.setAttribute("d", PATHS[name]);
+    svg.append(path);
+    return svg;
+  }
   const fmt = (n) => Number(n || 0).toLocaleString("pl-PL");
   const plural = (n, a, b, c) => (n === 1 ? a : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? b : c);
 
@@ -129,8 +151,8 @@
     const top = () =>
       h("div", { class: "qz-top" },
         h("div", { class: "qz-title" }, o.title || "Quiz"),
-        h("button", { class: "qz-icon", title: "Dźwięk", onclick: (e) => { muted = !muted; e.currentTarget.textContent = muted ? "🔇" : "🔊"; } }, muted ? "🔇" : "🔊"),
-        o.onClose ? h("button", { class: "qz-icon", title: "Zakończ quiz", onclick: () => o.onClose() }, "✕") : null);
+        h("button", { class: "qz-icon", title: "Dźwięk", onclick: (e) => { muted = !muted; e.currentTarget.replaceChildren(icon(muted ? "mute" : "volume")); } }, icon(muted ? "mute" : "volume")),
+        o.onClose ? h("button", { class: "qz-icon", title: "Zakończ quiz", onclick: () => o.onClose() }, icon("x")) : null);
 
     function screen(...kids) {
       clearTimeout(timer);
@@ -153,13 +175,13 @@
         countdown(3);
       }
       screen(h("div", { class: "qz-card qz-intro" },
-        h("div", { class: "qz-badge" }, "🎮 Quiz"),
+        h("div", { class: "qz-badge" }, icon("game"), "Quiz"),
         h("h1", {}, o.title || "Quiz"),
         h("p", { class: "qz-muted" }, `${n} ${plural(n, "pytanie", "pytania", "pytań")} · na każde masz kilkanaście sekund`),
         h("ul", { class: "qz-rules" },
-          h("li", {}, "⚡ Im szybciej odpowiesz, tym więcej punktów."),
-          h("li", {}, "🔥 Seria dobrych odpowiedzi mnoży punkty: 3 z rzędu ×1,5, a 5 z rzędu ×2."),
-          h("li", {}, "⏱ Gdy skończy się czas, pytanie przepada.")),
+          h("li", {}, icon("bolt"), h("span", {}, "Im szybciej odpowiesz, tym więcej punktów.")),
+          h("li", {}, icon("flame"), h("span", {}, "Seria dobrych odpowiedzi mnoży punkty: 3 z rzędu ×1,5, a 5 z rzędu ×2.")),
+          h("li", {}, icon("clock"), h("span", {}, "Gdy skończy się czas, pytanie przepada."))),
         input, err,
         h("button", { class: "qz-btn qz-go", onclick: go }, "Start!")));
       if (input) setTimeout(() => input.focus(), 50);
@@ -178,7 +200,7 @@
       const mult = streak >= 5 ? 2 : streak >= 3 ? 1.5 : 1;
       return h("div", { class: "qz-hud" },
         h("span", { class: "qz-count" }, `Pytanie ${i + 1} / ${n}`),
-        h("span", { class: "qz-streak" + (streak >= 3 ? " hot" : "") }, streak ? `🔥 ${streak}${mult > 1 ? ` · ×${String(mult).replace(".", ",")}` : ""}` : ""),
+        streak ? h("span", { class: "qz-streak" + (streak >= 3 ? " hot" : "") }, icon("flame"), `${streak}${mult > 1 ? ` · ×${String(mult).replace(".", ",")}` : ""}`) : h("span", { class: "qz-streak empty" }),
         h("span", { class: "qz-score" }, `${fmt(total)} pkt`));
     }
 
@@ -274,8 +296,8 @@
       };
       slot.replaceChildren(
         h("div", { class: "qz-fb " + (r.correct ? "ok" : "bad") },
-          r.correct ? `Dobrze! +${fmt(r.points)}` : r.timeout ? "⏱ Czas minął!" : "Niestety…",
-          !r.correct ? h("div", {}, "Poprawnie: ", h("b", {}, r.answerText)) : streak >= 3 ? h("div", {}, `🔥 Seria ${streak}! Punkty ×${String(r.multiplier).replace(".", ",")}`) : null),
+          r.correct ? `Dobrze! +${fmt(r.points)}` : r.timeout ? "Czas minął" : "Niestety…",
+          !r.correct ? h("div", {}, "Poprawnie: ", h("b", {}, r.answerText)) : streak >= 3 ? h("div", {}, `Seria ${streak} – punkty ×${String(r.multiplier).replace(".", ",")}`) : null),
         h("button", { class: "qz-btn ghost qz-next", onclick: next }, last ? "Wynik →" : "Dalej →"));
       keys = (e) => (e.key === "Enter" || e.key === " ") && next();
       advance = setTimeout(next, r.correct ? 2200 : 3400);
@@ -293,13 +315,13 @@
       const stars = pct >= 0.9 ? 3 : pct >= 0.6 ? 2 : pct >= 0.3 ? 1 : 0;
       const min = Math.floor(summary.seconds / 60), sec = summary.seconds % 60;
       screen(h("div", { class: "qz-card qz-end" },
-        h("div", { class: "qz-badge" }, pct >= 0.9 ? "🏆 Mistrzostwo!" : pct >= 0.6 ? "🎉 Świetnie!" : "💪 Dobra robota!"),
-        h("div", { class: "qz-stars" }, [0, 1, 2].map((k) => h("span", { class: k < stars ? "" : "off" }, "★"))),
+        h("div", { class: "qz-badge" }, icon("trophy"), pct >= 0.9 ? "Mistrzostwo" : pct >= 0.6 ? "Świetny wynik" : "Dobra robota"),
+        h("div", { class: "qz-stars" }, [0, 1, 2].map((k) => icon("star", k < stars ? "on" : "off"))),
         h("div", { class: "qz-big" }, `${fmt(total)} pkt`),
         extra && extra.rank ? h("p", { class: "qz-rank" }, extra.provisional ? `Na razie ${extra.rank}. miejsce z ${extra.of} – inni jeszcze grają` : `Miejsce: ${extra.rank} z ${extra.of}`) : null,
         h("div", { class: "qz-stats" },
           h("div", {}, h("b", {}, `${correct} / ${n}`), h("span", {}, "poprawne")),
-          h("div", {}, h("b", {}, `🔥 ${best}`), h("span", {}, "najdłuższa seria")),
+          h("div", {}, h("b", {}, icon("flame"), String(best)), h("span", {}, "najdłuższa seria")),
           h("div", {}, h("b", {}, `${min}:${String(sec).padStart(2, "0")}`), h("span", {}, "czas"))),
         h("div", { class: "qz-actions" },
           o.allowReplay && o.onReplay ? h("button", { class: "qz-btn", onclick: () => o.onReplay() }, "Zagraj jeszcze raz") : null,

@@ -48,7 +48,10 @@ const claudePath = () => (cachedPath === undefined ? (cachedPath = findClaude())
 function friendlyError(text) {
   const t = String(text || "");
   if (/login|log in|authenticat|api key|credential|oauth/i.test(t)) return "Claude Code nie jest zalogowany. Otwórz Claude Code (np. w VS Code) i zaloguj się swoim kontem Claude.";
-  if (/usage limit|rate limit|limit reached|overloaded|529|429/i.test(t)) return "Osiągnięto limit użycia subskrypcji Claude lub serwer jest przeciążony. Spróbuj za jakiś czas albo przełącz silnik na lokalny (Narzędzia → Silnik AI).";
+  if (/usage limit|rate limit|limit reached|hit your .*limit|usage credits|weekly limit|overloaded|529|429/i.test(t)) {
+    const reset = t.match(/resets\s+([^·\n]+?)(?:\s*\(|\s*·|$)/i);
+    return `Wyczerpano limit użycia subskrypcji Claude${reset ? ` (odnowi się o ${reset[1].trim()})` : ""} albo serwer jest przeciążony. Spróbuj później albo wybierz inny silnik (Narzędzia → Silnik AI).`;
+  }
   if (/ENOTFOUND|ECONNREFUSED|network|fetch failed|getaddrinfo/i.test(t)) return "Brak połączenia z internetem – Claude działa w chmurze. Sprawdź internet albo przełącz silnik na lokalny.";
   return "Claude zwrócił błąd: " + t.slice(0, 300);
 }

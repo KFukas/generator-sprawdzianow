@@ -62,22 +62,22 @@ function retryHtml() {
   const wrong = wrongQuestions();
   const ungraded = state.test.questions.some((q) => !solveScore(q).auto && solveScore(q).score == null);
   const ai = pendingAi.length
-    ? `<div class="s-panel ai"><div><b>✨ Propozycje oceny z AI</b><span>${pendingAi.length} ${plural(pendingAi.length, "zadanie czeka", "zadania czekają", "zadań czeka")} na zatwierdzenie. To tylko podpowiedź – decyzja należy do rodzica.</span></div>
+    ? `<div class="s-panel ai"><div><b><svg class=""><use href="#i-spark"/></svg> Propozycje oceny z AI</b><span>${pendingAi.length} ${plural(pendingAi.length, "zadanie czeka", "zadania czekają", "zadań czeka")} na zatwierdzenie. To tylko podpowiedź – decyzja należy do rodzica.</span></div>
         <div class="s-panel-actions"><button class="btn primary" data-sact="ai-accept-all">Przyjmij wszystkie</button></div></div>`
     : "";
   const retry = wrong.length
     ? `<div class="s-panel retry"><div><b>Powtórka błędów</b><span>Do poprawy: ${wrong.length} ${plural(wrong.length, "zadanie", "zadania", "zadań")}${ungraded ? " (zadania otwarte bez oceny nie są liczone)" : ""}. Wynik tego podejścia zostaje w historii.</span></div>
         <div class="s-panel-actions">
           ${typeof explainButtonHtml === "function" ? explainButtonHtml() : ""}
-          <button class="btn primary" data-sact="retry-ai">✨ Nowe zadania z tych zagadnień</button>
-          <button class="btn" data-sact="retry-same">Rozwiąż jeszcze raz błędne</button>
+          <button class="btn primary" data-sact="retry-ai"><svg class="ico"><use href="#i-spark"/></svg> Nowe zadania (AI)</button>
+          <button class="btn" data-sact="retry-same">Powtórz błędne</button>
         </div></div>`
-    : `<div class="s-panel good"><div><b>🎉 Brak błędów${ungraded ? " w zadaniach sprawdzonych" : ""}!</b><span>${ungraded ? "Zadania otwarte czekają na ocenę rodzica." : "Wszystkie zadania rozwiązane poprawnie."}</span></div></div>`;
-  return ai + retry + `<div class="s-history-link"><button class="btn ghost" data-sact="history">📈 Historia wyników</button></div>`;
+    : `<div class="s-panel good"><div><b><svg class=""><use href="#i-check-circle"/></svg> Brak błędów${ungraded ? " w zadaniach sprawdzonych" : ""}</b><span>${ungraded ? "Zadania otwarte czekają na ocenę rodzica." : "Wszystkie zadania rozwiązane poprawnie."}</span></div></div>`;
+  return ai + retry + `<div class="s-history-link"><button class="btn ghost" data-sact="history"><svg class="ico"><use href="#i-chart"/></svg> Historia wyników</button></div>`;
 }
 
 async function confirmReplace(what) {
-  return window.api.confirm(`${what}?`, "Obecny sprawdzian zostanie zastąpiony w programie (wynik zostaje w historii). Jeśli chcesz do niego wrócić, najpierw zapisz go (Plik → Zapisz).", "Dalej");
+  return window.api.confirm(`${what}?`, "Obecny sprawdzian zostanie zastąpiony w programie (wynik zostaje w historii). Wrócisz do niego w Bibliotece.", "Dalej");
 }
 
 async function retrySame() {
@@ -189,6 +189,7 @@ function histFiltered() {
 }
 
 function renderHistory() {
+  $("#hist-name").closest(".toolbar").classList.toggle("hidden", !hist.all.length);
   const names = [...new Set(hist.all.map((e) => e.name).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pl"));
   const subjects = [...new Set(hist.all.map((e) => e.subject).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pl"));
   if (hist.name && !names.includes(hist.name)) hist.name = "";
@@ -242,7 +243,7 @@ function renderHistory() {
             (e) => `<tr>
               <td>${fmtDate(e.date)}</td>
               <td>${esc(e.name || "–")}</td>
-              <td class="t">${esc(e.title)}${e.group ? ` <span class="badge">gr. ${esc(e.group)}</span>` : ""}${e.retry ? ` <span class="badge retry">powtórka</span>` : ""}${e.remote && e.mode !== "class" ? ` <span class="badge">tablet</span>` : ""}${e.mode === "class" ? ` <span class="badge">klasa</span>` : ""}${e.mode === "paper" ? ` <span class="badge">📷 kartka</span>` : ""}${e.mode === "quiz" ? ` <span class="badge quiz">🎮 quiz · ${Number(e.quizPoints || 0).toLocaleString("pl-PL")} pkt</span>` : ""}${e.plan ? ` <span class="badge">plan nauki</span>` : ""}${e.timeUp ? ` <span class="badge retry">⏱ czas minął</span>` : ""}${e.wrong && e.wrong.length ? `<div class="muted small" title="${esc(e.wrong.join("\n"))}">błędy: ${e.wrong.length}</div>` : ""}</td>
+              <td class="t">${esc(e.title)}${e.group ? ` <span class="badge">gr. ${esc(e.group)}</span>` : ""}${e.retry ? ` <span class="badge retry">powtórka</span>` : ""}${e.remote && e.mode !== "class" ? ` <span class="badge">tablet</span>` : ""}${e.mode === "class" ? ` <span class="badge">klasa</span>` : ""}${e.mode === "paper" ? ` <span class="badge"><svg class=""><use href="#i-camera"/></svg> kartka</span>` : ""}${e.mode === "quiz" ? ` <span class="badge quiz"><svg class=""><use href="#i-game"/></svg> quiz · ${Number(e.quizPoints || 0).toLocaleString("pl-PL")} pkt</span>` : ""}${e.plan ? ` <span class="badge">plan nauki</span>` : ""}${e.timeUp ? ` <span class="badge retry"><svg class=""><use href="#i-clock"/></svg> czas minął</span>` : ""}${e.wrong && e.wrong.length ? `<div class="muted small" title="${esc(e.wrong.join("\n"))}">błędy: ${e.wrong.length}</div>` : ""}</td>
               <td class="r">${e.openGraded ? `${e.total} / ${e.max}` : `${e.closed} / ${e.closedMax}*`}</td>
               <td class="r"><b>${Math.round(e.pct)}%</b></td>
               <td>${esc(e.mark || (e.openGraded ? "" : "otwarte bez oceny"))}</td>
@@ -275,9 +276,16 @@ function historyChart(list) {
       <text x="${L - 8}" y="${y(t.p) + 4}" class="tick" text-anchor="end">${t.p}%</text>
       ${t.g ? `<text x="${L + iw + 8}" y="${y(t.p) + 4}" class="tick">ocena ${t.g}</text>` : ""}`)
     .join("");
-  const every = Math.max(1, Math.ceil(list.length / 10));
-  // data pod osią tylko przy zmianie dnia
-  const xl = list.map((e, i) => ((i % every === 0 || i === list.length - 1) && (i === 0 || fmtDateShort(e.date) !== fmtDateShort(list[i - 1].date)) ? `<text x="${x(i)}" y="${H - 10}" class="tick" text-anchor="middle">${fmtDateShort(e.date)}</text>` : "")).join("");
+  // data pod osią przy każdej zmianie dnia (z odstępem, żeby podpisy na siebie nie nachodziły)
+  let lastX = -Infinity;
+  const xl = list
+    .map((e, i) => {
+      if (i > 0 && fmtDateShort(e.date) === fmtDateShort(list[i - 1].date)) return "";
+      if (x(i) - lastX < 48) return "";
+      lastX = x(i);
+      return `<text x="${x(i)}" y="${H - 10}" class="tick" text-anchor="middle">${fmtDateShort(e.date)}</text>`;
+    })
+    .join("");
   const path = list.map((e, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(e.pct).toFixed(1)}`).join(" ");
   const pts = list.map((e, i) => `<circle cx="${x(i)}" cy="${y(e.pct)}" r="5" class="${e.openGraded ? "pt" : "pt open"}"/>`).join("");
   const hits = list.map((e, i) => `<circle cx="${x(i)}" cy="${y(e.pct)}" r="16" class="hit" data-i="${i}"/>`).join("");
@@ -340,7 +348,7 @@ function renderGroupSwitch() {
     ? `<div class="gswitch">${Object.keys(t.groups)
         .map((g) => `<button class="${g === t.group ? "active" : ""}" data-group="${g}" ${state.generating ? "disabled" : ""}>Grupa ${g}</button>`)
         .join("")}<button class="gx" data-group-act="remove" title="Usuń grupę B" ${state.generating ? "disabled" : ""}><svg class="ico"><use href="#i-x"/></svg></button></div>`
-    : `<button class="gadd" data-group-act="add" title="Druga wersja sprawdzianu dla sąsiada z ławki" ${state.generating || !t.questions.length ? "disabled" : ""}><svg class="ico"><use href="#i-plus"/></svg>Grupa B</button>`;
+    : "";
 }
 
 function switchGroup(g) {
@@ -427,7 +435,7 @@ function aiSuggestionHtml(q) {
   const g = s.aiGrades[q.id];
   if (!g) return "";
   const applied = s.openPoints[q.id] === g.points;
-  return `<div class="s-ai"><div><span class="s-ai-badge">✨ AI proponuje: <b>${g.points} / ${q.points} pkt</b></span> <span>${esc(g.comment)}</span></div>
+  return `<div class="s-ai"><div><span class="s-ai-badge"><svg class=""><use href="#i-spark"/></svg> AI proponuje: <b>${g.points} / ${q.points} pkt</b></span> <span>${esc(g.comment)}</span></div>
     ${applied ? `<span class="s-ai-ok">✓ przyjęto</span>` : `<button class="btn" data-sact="ai-accept">Przyjmij</button>`}</div>`;
 }
 

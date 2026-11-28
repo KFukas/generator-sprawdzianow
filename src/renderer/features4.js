@@ -129,10 +129,33 @@ function classStudent(cid, name) {
 const studentPoints = (st) => (st.quiz ? st.quiz.points : st.live ? st.live.points : 0);
 const classRanking = () => klasa.students.slice().sort((a, b) => studentPoints(b) - studentPoints(a) || (a.quiz ? 0 : 1) - (b.quiz ? 0 : 1));
 
+let classIdleKind = "test";
+/** Ekran „Klasa” z paska bocznego: wyniki trwającej sesji albo przycisk rozpoczęcia. */
+function showClassView() {
+  openDialog("dlg-class");
+  if (klasa.test) renderClass();
+  else renderClassIdle();
+}
+function renderClassIdle() {
+  const t = state.test;
+  const ok = Boolean(t && t.questions && t.questions.length);
+  $("#class-idle").classList.remove("hidden");
+  $("#class-live").classList.add("hidden");
+  document.querySelectorAll("#class-kind button").forEach((b) => b.classList.toggle("active", b.dataset.kind === classIdleKind));
+  $("#class-sub").textContent = "Wszyscy uczniowie skanują jeden kod QR i rozwiązują na swoich tabletach. Wyniki widzisz tutaj na bieżąco.";
+  $("#class-idle-text").innerHTML = ok
+    ? `Uczniowie dostaną: <b>${esc(t.title)}</b>${t.groups ? ` (grupa ${esc(t.group)})` : ""} – ${classIdleKind === "quiz" ? "jako quiz-grę z rankingiem na żywo" : "jako sprawdzian do rozwiązania"}. Tablety muszą być w tej samej sieci Wi-Fi co komputer.`
+    : "Najpierw przygotuj sprawdzian (sekcja Sprawdzian) – potem uruchom go tutaj dla całej klasy.";
+  $("#btn-class-start").disabled = !ok;
+}
+$("#btn-class-start").addEventListener("click", () => openClass(classIdleKind));
+
 async function openClass(kind = "test", reopen = false) {
   const t = state.test;
   if (!t || !t.questions.length) return toast("Najpierw wygeneruj sprawdzian.", true);
   openDialog("dlg-class");
+  $("#class-idle").classList.add("hidden");
+  $("#class-live").classList.remove("hidden");
   if (reopen && classLive()) return renderClass();
   if (classLive() && klasa.students.some((s) => s.status === "done") && !(await window.api.confirm("Zacząć nową sesję klasy?", "Uczniowie zeskanują nowy kod. Dotychczasowe wyniki są zapisane w historii.", "Nowa sesja"))) return renderClass();
   Object.assign(klasa, { id: newId("k"), kind, test: t, group: t.groups ? t.group : null, students: [], devices: new Set(), url: "", qr: "", others: [], error: "" });
@@ -149,12 +172,15 @@ function renderClassSoon() {
   classTimer = setTimeout(() => {
     classTimer = 0;
     if (!$("#dlg-class").classList.contains("hidden")) renderClass();
+    renderShareChip();
   }, 250);
 }
 
 function renderClass() {
   const k = klasa;
-  if (!k.test) return;
+  if (!k.test) return renderClassIdle();
+  $("#class-idle").classList.add("hidden");
+  $("#class-live").classList.remove("hidden");
   const live = classLive();
   const t = classTest();
   const done = k.students.filter((s) => s.status === "done");
@@ -169,7 +195,7 @@ function renderClass() {
     : live
       ? `<span class="ok-dot"></span> Urządzenia: <b>${k.devices.size}</b> · uczniowie: <b>${k.students.length}</b> · ${k.kind === "quiz" ? "skończyli" : "oddali"}: <b>${done.length}</b>`
       : k.url
-        ? "Udostępnianie zatrzymane – wyniki zostają poniżej i w historii."
+        ? `Sesja zatrzymana – wyniki zostają poniżej i w historii. <button class="btn" data-cl="restart">Nowa sesja</button>`
         : "";
   $("#class-others").innerHTML = live && k.others.length ? `Inne adresy: ${k.others.map((u) => `<code>${esc(u)}</code>`).join(" ")}` : "";
   $("#btn-class-stop").disabled = !live;
@@ -177,7 +203,7 @@ function renderClass() {
   const openMax = t.questions.filter((q) => fmtOf(q) === "open").length;
   $("#btn-class-ai").classList.toggle("hidden", k.kind !== "test" || !openMax);
   $("#btn-class-ai").disabled = !done.length || state.generating || k.aiBusy;
-  $("#btn-class-ai").innerHTML = k.aiBusy ? `<span class="spinner small"></span> AI ocenia…` : "✨ Oceń otwarte z AI";
+  $("#btn-class-ai").innerHTML = k.aiBusy ? `<span class="spinner small"></span> AI ocenia…` : `<svg class="ico"><use href="#i-spark"/></svg> Oceń otwarte z AI`;
   $("#class-table").innerHTML = k.kind === "quiz" ? classQuizTable() : classTestTable(t);
   $("#class-stats").innerHTML = k.kind === "quiz" ? classQuizStats(done) : classTestStats(t, done);
 }
@@ -189,11 +215,11 @@ function classTestTable(t) {
     .sort((a, b) => a.name.localeCompare(b.name, "pl"))
     .map((st) => {
       const i = klasa.students.indexOf(st);
-      if (st.status !== "done") return `<tr><td><b>${esc(st.name)}</b></td><td><span class="cl-st working">✍️ rozwiązuje</span></td><td colspan="5"></td><td></td></tr>`;
+      if (st.status !== "done") return `<tr><td><b>${esc(st.name)}</b></td><td><span class="cl-st working"><svg><use href="#i-pen"/></svg> rozwiązuje</span></td><td colspan="5"></td><td></td></tr>`;
       const tot = solveTotals(st.solve, t);
       const pctV = tot.openGraded ? (tot.max ? (tot.total / tot.max) * 100 : 0) : tot.closedMax ? (tot.closed / tot.closedMax) * 100 : 0;
       const min = Math.round(((st.solve.finishedAt || 0) - (st.solve.startedAt || 0)) / 60000);
-      return `<tr><td><b>${esc(st.name)}</b></td><td><span class="cl-st done">✓ oddał(a)</span>${st.solve.timeUp ? ` <span class="badge retry">⏱</span>` : ""}</td>
+      return `<tr><td><b>${esc(st.name)}</b></td><td><span class="cl-st done"><svg><use href="#i-check"/></svg> oddane</span>${st.solve.timeUp ? ` <span class="badge retry" title="Czas minął"><svg><use href="#i-clock"/></svg></span>` : ""}</td>
         <td class="r">${commaNum(tot.closed)} / ${tot.closedMax}</td>
         <td class="r">${tot.openMax ? (tot.openGraded ? `${commaNum(tot.open)} / ${tot.openMax}` : `<span class="muted">do oceny</span>`) : "–"}</td>
         <td class="r"><b>${tot.openGraded ? `${commaNum(tot.total)} / ${tot.max}` : `${commaNum(tot.closed)}*`}</b></td>
@@ -234,12 +260,11 @@ function classTestStats(t, done) {
 
 function classQuizTable() {
   if (!klasa.students.length) return `<div class="class-empty">Czekam na graczy… Każdy skanuje kod, wpisuje imię i klika „Start!”.</div>`;
-  const medals = ["🥇", "🥈", "🥉"];
   return `<table class="hist-table rank"><thead><tr><th>#</th><th>Gracz</th><th class="r">Punkty</th><th class="r">Poprawne</th><th class="r">Seria</th><th>Status</th></tr></thead><tbody>${classRanking()
     .map((st, i) => {
       const s = st.quiz || st.live || { points: 0, correct: 0, answered: 0, total: share && share.items ? share.items.length : 0, best: 0 };
-      return `<tr class="${i < 3 && s.points ? "top" : ""}"><td class="rk">${s.points && i < 3 ? medals[i] : i + 1}</td><td><b>${esc(st.name)}</b></td><td class="r"><b>${fmtPts(s.points)}</b></td><td class="r">${s.correct} / ${s.total}</td><td class="r">🔥 ${s.best}</td>
-        <td>${st.quiz ? `<span class="cl-st done">✓ koniec</span>` : `<span class="cl-st working">🎮 ${s.answered || 0} / ${s.total || "?"}</span>`}</td></tr>`;
+      return `<tr class="${i < 3 && s.points ? "top" : ""}"><td class="rk">${s.points && i < 3 ? `<span class="rk-medal m${i + 1}">${i + 1}</span>` : i + 1}</td><td><b>${esc(st.name)}</b></td><td class="r"><b>${fmtPts(s.points)}</b></td><td class="r">${s.correct} / ${s.total}</td><td class="r"><span class="streak-n"><svg><use href="#i-flame"/></svg> ${s.best}</span></td>
+        <td>${st.quiz ? `<span class="cl-st done"><svg><use href="#i-check"/></svg> koniec</span>` : `<span class="cl-st working"><svg><use href="#i-game"/></svg> ${s.answered || 0} / ${s.total || "?"}</span>`}</td></tr>`;
     })
     .join("")}</tbody></table>`;
 }
@@ -276,7 +301,7 @@ async function onShareSubmission(sub) {
       const ranking = classRanking();
       return { points: sub.quiz.points, rank: ranking.indexOf(st) + 1, of: ranking.length, provisional: ranking.some((x) => !x.quiz) };
     }
-    toast(`🎮 ${sub.name || "Gracz"}: ${fmtPts(sub.quiz.points)} pkt w quizie (${sub.quiz.correct} / ${sub.quiz.total} poprawnych).`, false, 8000);
+    toast(`${sub.name || "Gracz"}: ${fmtPts(sub.quiz.points)} pkt w quizie (${sub.quiz.correct} / ${sub.quiz.total} poprawnych).`, false, 8000);
     setTabletStatus(`<span class="ok-dot"></span> <b>${esc(sub.name || "Gracz")}</b> skończył(a) quiz: ${fmtPts(sub.quiz.points)} pkt, ${sub.quiz.correct} / ${sub.quiz.total} poprawnych.`);
     return { points: sub.quiz.points };
   }
@@ -331,7 +356,7 @@ function reviewStudent(i) {
   renderPreview();
   $(".main").scrollTop = 0;
   syncUi();
-  toast(`Podgląd: ${st.name}. Zestawienie klasy otworzysz przyciskiem „Klasa · aktywne” nad kartką albo z menu Narzędzia.`, false, 7000);
+  toast(`Podgląd: ${st.name}. Zestawienie klasy jest w sekcji „Klasa” w pasku bocznym.`, false, 7000);
 }
 
 async function classAiGrade() {
@@ -404,9 +429,14 @@ function classCsv() {
 
 $("#dlg-class").addEventListener("click", async (e) => {
   const kb = e.target.closest("#class-kind [data-kind]");
+  if (kb && !klasa.test) {
+    classIdleKind = kb.dataset.kind;
+    return renderClassIdle();
+  }
   if (kb && kb.dataset.kind !== klasa.kind) return openClass(kb.dataset.kind);
   const b = e.target.closest("[data-cl]");
   if (b && b.dataset.cl === "review") return reviewStudent(+b.dataset.i);
+  if (b && b.dataset.cl === "restart") return openClass(klasa.kind);
 });
 $("#btn-class-stop").addEventListener("click", async () => {
   await stopShare();
@@ -420,12 +450,13 @@ $("#btn-class-csv").addEventListener("click", async () => {
 $("#btn-class-ai").addEventListener("click", classAiGrade);
 
 // ================== sprawdzanie wydrukowanej kartki ze zdjęcia ==================
-const paper = { files: [], busy: false };
+const paper = { files: [], busy: false, error: "" };
 function openPaper() {
   const t = state.test;
   if (!t || !t.questions.length) return toast("Najpierw wygeneruj sprawdzian.", true);
   paper.files = [];
   paper.busy = false;
+  paper.error = "";
   renderPaper();
   $("#modal-paper").classList.remove("hidden");
 }
@@ -438,7 +469,8 @@ function renderPaper() {
   $("#paper-thumbs").innerHTML = paper.files.map((f, i) => `<div class="paper-thumb"><img src="${f.url}" alt="" /><button class="icon-btn" data-prm="${i}" title="Usuń"><svg><use href="#i-x"/></svg></button><span>${i + 1}</span></div>`).join("") + `<button class="paper-add" id="btn-paper-add" ${paper.files.length >= 8 || paper.busy ? "disabled" : ""}><svg><use href="#i-camera"/></svg><span>${paper.files.length ? "Dodaj stronę" : "Wybierz zdjęcia kartki"}</span><small>JPG, PNG lub PDF</small></button>`;
   $("#btn-paper-ok").disabled = !paper.files.length || paper.busy;
   $("#btn-paper-ok").innerHTML = paper.busy ? `<span class="spinner small"></span> AI czyta kartkę…` : "Odczytaj odpowiedzi";
-  $("#paper-status").textContent = paper.busy ? `Odczytuję ${paper.files.length} ${plural(paper.files.length, "zdjęcie", "zdjęcia", "zdjęć")} – to zwykle trwa ${state.ai && state.ai.kind === "ollama" ? "kilkanaście minut" : "do 1–2 minut"}…` : "";
+  $("#paper-status").classList.toggle("error-text", Boolean(paper.error) && !paper.busy);
+  $("#paper-status").textContent = paper.error && !paper.busy ? `Nie udało się odczytać kartki: ${paper.error}` : paper.busy ? `Odczytuję ${paper.files.length} ${plural(paper.files.length, "zdjęcie", "zdjęcia", "zdjęć")} – to zwykle trwa ${state.ai && state.ai.kind === "ollama" ? "kilkanaście minut" : "do 1–2 minut"}…` : "";
 }
 
 /** Zdjęcie kartki dla AI: dłuższy bok do 1600 px (pismo ręczne musi być czytelne). */
@@ -491,6 +523,7 @@ async function readPaper() {
   if (state.generating) return toast("AI jest teraz zajęte – spróbuj za chwilę.", true);
   if (!(await refreshAi())) return openAiSetup();
   paper.busy = true;
+  paper.error = "";
   renderPaper();
   let res;
   try {
@@ -504,8 +537,8 @@ async function readPaper() {
     paper.busy = false;
   }
   if (!res.ok) {
-    renderPaper();
-    return toast(res.error, true);
+    paper.error = res.error;
+    return renderPaper();
   }
   const data = res.data || {};
   resetSolve();
@@ -558,7 +591,7 @@ async function readPaper() {
   renderPreview();
   $(".main").scrollTop = 0;
   syncUi();
-  toast(`📷 AI odczytało odpowiedzi w ${read} z ${t.questions.length} zadań. Sprawdź je i kliknij „Zakończ i sprawdź”.`, false, 8000);
+  toast(`AI odczytało odpowiedzi w ${read} z ${t.questions.length} zadań. Sprawdź je i kliknij „Zakończ i sprawdź”.`, false, 8000);
 }
 
 $("#modal-paper").addEventListener("click", (e) => {
@@ -585,9 +618,9 @@ function solveBannerHtml() {
   const s = state.solve;
   if (!s.paper) return "";
   if (s.finished)
-    return `<div class="s-banner"><span>📷</span><span>Kartka sprawdzona. ${state.test.questions.some((q) => fmtOf(q) === "open") ? "AI zaproponowało punkty za zadania otwarte – zobaczysz je po kliknięciu „Pokaż odpowiedzi i oceń”." : ""}</span></div>`;
+    return `<div class="s-banner"><svg><use href="#i-camera"/></svg><span>Kartka sprawdzona. ${state.test.questions.some((q) => fmtOf(q) === "open") ? "AI zaproponowało punkty za zadania otwarte – zobaczysz je po kliknięciu „Pokaż odpowiedzi i oceń”." : ""}</span></div>`;
   const unclear = (s.unclear || []).map((id) => state.test.questions.findIndex((q) => q.id === id) + 1).filter((n) => n > 0);
-  return `<div class="s-banner warn"><span>📷</span><span><b>Odpowiedzi odczytane z kartki przez AI.</b> Porównaj je z kartką i popraw, jeśli coś się nie zgadza – potem kliknij „Zakończ i sprawdź”.${unclear.length ? ` <b>Niepewny odczyt: zad. ${unclear.join(", ")}</b> (zaznaczone na żółto).` : ""}</span></div>`;
+  return `<div class="s-banner warn"><svg><use href="#i-camera"/></svg><span><b>Odpowiedzi odczytane z kartki przez AI.</b> Porównaj je z kartką i popraw, jeśli coś się nie zgadza – potem kliknij „Zakończ i sprawdź”.${unclear.length ? ` <b>Niepewny odczyt: zad. ${unclear.join(", ")}</b> (zaznaczone na żółto).` : ""}</span></div>`;
 }
 function solveTaskClass(q) {
   const s = state.solve;
@@ -600,16 +633,16 @@ function explainButtonHtml() {
   if (s.explainBusy) return `<button class="btn" disabled><span class="spinner small"></span> AI wyjaśnia…</button>`;
   const wrong = wrongQuestions();
   if (!wrong.length || wrong.every((q) => (s.explanations || {})[q.id])) return "";
-  return `<button class="btn" data-sact="explain">💡 Wyjaśnij moje błędy</button>`;
+  return `<button class="btn" data-sact="explain"><svg class="ico"><use href="#i-bulb"/></svg> Wyjaśnij moje błędy</button>`;
 }
 
 function explainHtml(q) {
   const s = state.solve;
   const e = (s.explanations || {})[q.id];
   if (!e || !s.finished) return "";
-  return `<div class="s-explain"><div class="s-ex-head">💡 Dlaczego?</div><p>${esc(e.why)}</p>
-    ${e.remember ? `<div class="s-ex-row"><span>🧠</span><span><b>Zapamiętaj:</b> ${esc(e.remember)}</span></div>` : ""}
-    ${e.read ? `<div class="s-ex-row"><span>📖</span><span><b>Doczytaj:</b> ${esc(e.read)}</span></div>` : ""}</div>`;
+  return `<div class="s-explain"><div class="s-ex-head"><svg><use href="#i-bulb"/></svg> Dlaczego?</div><p>${esc(e.why)}</p>
+    ${e.remember ? `<div class="s-ex-row"><svg><use href="#i-bookmark"/></svg><span><b>Zapamiętaj:</b> ${esc(e.remember)}</span></div>` : ""}
+    ${e.read ? `<div class="s-ex-row"><svg><use href="#i-book"/></svg><span><b>Doczytaj:</b> ${esc(e.read)}</span></div>` : ""}</div>`;
 }
 
 /** Treść zadania razem z częściami (zdania P/F, pary, luki) – dla AI. */
@@ -656,7 +689,7 @@ async function explainMistakes() {
       s.explanations[it.id] = { why: cleanText(it.why).slice(0, 900), remember: cleanText(it.remember).slice(0, 400), read: cleanText(it.read).slice(0, 300) };
     }
     const n = Object.keys(s.explanations).length;
-    toast(n ? "💡 Wyjaśnienia są pod zadaniami z błędami." : "AI nie przygotowało wyjaśnień – spróbuj jeszcze raz.", !n);
+    toast(n ? "Wyjaśnienia są pod zadaniami z błędami." : "AI nie przygotowało wyjaśnień – spróbuj jeszcze raz.", !n);
   } finally {
     s.explainBusy = false;
     if (state.solve === s && state.view === "solve") {
@@ -670,12 +703,7 @@ async function explainMistakes() {
 // ================== przyciski nad kartką, menu ==================
 function renderPlaySlot() {
   const slot = $("#play-slot");
-  if (!slot) return;
-  const ok = state.test && state.test.questions.length;
-  slot.innerHTML = ok
-    ? `<button class="gadd" data-play="quiz" title="Quiz-gra z tego sprawdzianu (Ctrl+J)" ${state.generating ? "disabled" : ""}><svg class="ico"><use href="#i-game"/></svg>Quiz</button>
-       <button class="gadd" data-play="paper" title="Sprawdź wydrukowaną kartkę ze zdjęcia (Ctrl+K)" ${state.generating ? "disabled" : ""}><svg class="ico"><use href="#i-camera"/></svg>Kartka</button>`
-    : "";
+  if (slot) slot.innerHTML = "";
 }
 $("#modebar-extra").addEventListener("click", (e) => {
   const b = e.target.closest("[data-play]");
@@ -693,7 +721,7 @@ const prevMenuExtra4 = onMenuExtra;
 onMenuExtra = function (action, arg) {
   if (action === "quiz") return startQuiz();
   if (action === "paper") return openPaper();
-  if (action === "class") return openClass(share && share.audience === "class" ? share.kind : "test", true);
+  if (action === "class") return showClassView();
   return prevMenuExtra4(action, arg);
 };
 document.addEventListener("keydown", (e) => {
